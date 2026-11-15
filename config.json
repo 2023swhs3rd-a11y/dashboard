@@ -1,0 +1,17 @@
+{
+  "owner": "2023swhs3rd-a11y",
+  "includePrivate": false,
+  "includeForks": true,
+  "exclude": ["dashboard"],
+  "defaultSelected": [
+    "matrix",
+    "2028plan",
+    "2023swhs3rd-a11y.github.io",
+    "report",
+    "eco-report",
+    "ggtransfer"
+  ],
+  "defaultSort": "visitors",
+  "staleDays": 30,
+  "trafficHistoryDays": 400
+}

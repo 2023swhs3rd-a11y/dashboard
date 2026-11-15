@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Repo 운영 현황</title>
+<style>
+  :root {
+    --color-fg: #1b1f24; --color-fg-muted: #5c6672; --color-bg: #f6f7f9; --color-panel: #ffffff; --color-border-line: #dde1e6;
+    --color-ok: #17794a; --color-warn: #a86400; --color-bad: #c2362b;
+    --series-1: #2f6fde; --series-2: #e07b2e; --series-3: #2a9d8f; --series-4: #8a63d2; --series-5: #c9498c; --series-6: #7a8594;
+    --font-anthropic-sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    --font-anthropic-serif: var(--font-anthropic-sans);
+    --cds-font-size-caption: 12px; --cds-font-size-body: 14px; --cds-font-size-heading: 17px; --cds-font-size-title: 28px;
+    --cds-font-weight-medium: 600; --cds-radius: 8px;
+    --cds-text-secondary: var(--color-fg-muted); --cds-chart-grid: #e6e9ed; --cds-chart-reference: #8f99a5; --cds-chart-status-critical: var(--color-bad);
+    --cds-surface-popover: #ffffff; --cds-border: var(--color-border-line); --cds-shadow-popover: 0 4px 14px rgba(20, 30, 45, .14);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-fg: #e6e9ee; --color-fg-muted: #9aa4b1; --color-bg: #12151a; --color-panel: #1a1e25; --color-border-line: #2c323b;
+      --color-ok: #4cc38a; --color-warn: #e0a23a; --color-bad: #f0695e;
+      --series-1: #6aa0ff; --series-2: #f0984f; --series-3: #4fc4b5; --series-4: #ab8bea; --series-5: #e277ae; --series-6: #97a2b0;
+      --cds-chart-grid: #2a3039; --cds-chart-reference: #6f7a88; --cds-surface-popover: #222730; --cds-shadow-popover: 0 4px 14px rgba(0, 0, 0, .5);
+      color-scheme: dark;
+    }
+  }
+  body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
+  [hidden] { display: none !important; }
+  #dash-root { max-width: 1120px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+  .dash-select { font: inherit; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 5px 8px; max-width: 100%; }
+  .dash-skeleton { background: var(--cds-chart-grid); border-radius: var(--cds-radius); color: transparent; }
+  @media (prefers-reduced-motion: no-preference) { .dash-skeleton { animation: rd-pulse 1.2s ease-in-out infinite alternate; } }
+  @keyframes rd-pulse { from { opacity: .45; } to { opacity: 1; } }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+  // 데이터 계층: config.json과 data/dashboard.json을 읽어 페이지의 계산과 그리기를 실행합니다.
+  (() => {
+    const calcs = {}, draws = {}, listeners = [];
+    const KEY = 'repo-dashboard-settings';
+    let cache = {}, DATA = null, state = 'loading', DEF = { repos: [], sort: 'visitors' }, P = { ...DEF };
+    const run = (name) => document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => {
+      if (el.closest('[hidden]')) return;
+      try { draws[name](el); } catch (e) { console.error('draw ' + name, e); }
+    });
+    const rerun = () => { cache = {}; listeners.forEach((f) => f()); Object.keys(draws).forEach(run); };
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { /* 저장 불가 환경 */ } };
+    window.dash = {
+      colors: ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)', 'var(--series-6)'],
+      data(id) {
+        if (state !== 'ok') return { status: state, data: calcs[id] ? null : [] };
+        if (DATA[id]) return { status: 'ok', data: DATA[id] };
+        if (calcs[id]) {
+          if (!(id in cache)) cache[id] = calcs[id].fn(...calcs[id].inputs.map((i) => window.dash.data(i).data));
+          return { status: 'ok', data: cache[id] };
+        }
+        return { status: 'missing', data: [] };
+      },
+      calc(id, def) { calcs[id] = def; },
+      draw(name, fn) { if (fn) draws[name] = fn; else run(name); },
+      onData(fn) { listeners.push(fn); },
+      params: () => P,
+      setParams(o) { P = { ...P, ...o }; save(); rerun(); },
+      resetParams() { P = { ...DEF }; try { localStorage.removeItem(KEY); } catch (e) { /* 무시 */ } rerun(); },
+      setLink() {},
+    };
+    const getJSON = async (url) => {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(url + ' ' + res.status);
+      return res.json();
+    };
+    window.addEventListener('DOMContentLoaded', async () => {
+      rerun();
+      try {
+        const [cfg, d] = await Promise.all([getJSON('config.json'), getJSON('data/dashboard.json')]);
+        const names = (d.repos || []).map((r) => r.repo);
+        const wanted = (cfg.defaultSelected || []).filter((n) => names.includes(n));
+        DEF = { repos: wanted.length ? wanted : names, sort: cfg.defaultSort || 'visitors' };
+        P = { ...DEF };
+        try {
+          const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+          if (saved && Array.isArray(saved.repos)) P = { repos: saved.repos.filter((n) => names.includes(n)), sort: saved.sort || DEF.sort };
+        } catch (e) { /* 저장값 없음 */ }
+        window.rdMeta = { generated_at: d.generated_at, owner: d.owner, staleDays: cfg.staleDays || 30 };
+        DATA = {};
+        for (const k of ['repos', 'traffic', 'commits', 'codefreq', 'punchcard', 'referrers', 'actions', 'languages']) DATA[k] = d[k] || [];
+        state = 'ok';
+      } catch (e) {
+        console.error(e);
+        state = 'error';
+      }
+      rerun();
+    });
+    let timer = 0;
+    window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(rerun, 150); });
+  })();
+</script>
+</head>
+<body>
+<div id="dash-root">
+<style>
+  .rd { display: flex; flex-direction: column; gap: var(--cds-gap-xl, 32px); font-family: var(--font-anthropic-sans); color: var(--color-fg); font-size: var(--cds-font-size-body); }
+  .rd-head { display: flex; flex-direction: column; gap: var(--cds-gap-sm, 8px); }
+  .rd-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+  .rd-error { margin: 0; padding: 10px 14px; border: 1px solid var(--color-bad); border-radius: var(--cds-radius); color: var(--color-bad); }
+  .rd a { color: inherit; text-decoration: underline; text-decoration-color: var(--color-border-line); text-underline-offset: 3px; }
+  .rd a:hover { text-decoration-color: currentColor; }
+  .rd-take { margin: 0; max-width: 70ch; line-height: 1.7; }
+  .rd-take b { font-weight: var(--cds-font-weight-medium); font-variant-numeric: tabular-nums; }
+  .rd-h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; text-wrap: balance; }
+  .rd-note { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); line-height: 1.6; }
+  .rd-sec { display: flex; flex-direction: column; gap: var(--cds-gap-md, 12px); min-width: 0; }
+  .rd-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--cds-gap-md, 12px); }
+  .rd-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg, 16px); display: flex; flex-direction: column; gap: var(--cds-gap-sm, 8px); min-width: 0; }
+  .rd-kpi-label { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .rd-kpi-val { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .rd-kpi-sub { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; line-height: 1.5; }
+  .rd-good { color: var(--color-ok); }
+  .rd-poor { color: var(--color-bad); }
+  .rd-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: var(--cds-gap-lg, 20px); }
+  .rd-rowhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--cds-gap-sm, 8px); }
+  .rd-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .rd-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .rd-chart { position: relative; min-width: 0; }
+  .rd-chart svg { display: block; overflow: visible; }
+  .rd-h240 { min-height: 240px; }
+  .rd-h220 { min-height: 220px; }
+  .rd-h130 { min-height: 130px; }
+  .rd-h150 { min-height: 150px; }
+  .rd-axis { fill: var(--cds-text-secondary, var(--color-fg-muted)); font-size: 11px; font-family: var(--font-anthropic-sans); }
+  .rd-gridline { stroke: var(--cds-chart-grid, var(--color-border-line)); stroke-width: 1; }
+  .rd-refline { stroke: var(--cds-chart-reference, var(--color-fg-muted)); stroke-width: 1; stroke-dasharray: 3 3; }
+  .rd-tip { position: absolute; z-index: 2; pointer-events: none; background: var(--cds-surface-popover, var(--color-bg)); border: 1px solid var(--cds-border, var(--color-border-line)); box-shadow: var(--cds-shadow-popover, none); border-radius: var(--cds-radius); padding: 6px 9px; font-size: var(--cds-font-size-caption); color: var(--cds-text-secondary, var(--color-fg-muted)); white-space: nowrap; font-variant-numeric: tabular-nums; line-height: 1.5; }
+  .rd-tip-h { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+  .rd-tablewrap { overflow-x: auto; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); }
+  .rd-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  .rd-table th { text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); padding: 9px 12px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .rd-table td { padding: 9px 12px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; vertical-align: middle; }
+  .rd-table tbody tr:last-child td { border-bottom: 0; }
+  .rd-table .rd-num { text-align: right; }
+  .rd-table .rd-name { font-weight: var(--cds-font-weight-medium); }
+  .rd-dim { color: var(--color-fg-muted); }
+  .rd-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; font-size: var(--cds-font-size-caption); }
+  .rd-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .rd-pill--ok { color: var(--color-ok); }
+  .rd-pill--warn { color: var(--color-warn); }
+  .rd-pill--bad { color: var(--color-bad); }
+  .rd-bars { display: grid; grid-template-columns: minmax(84px, 36%) 1fr auto; gap: 8px 10px; align-items: center; }
+  .rd-bar-label { min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
+  .rd-bar-track { height: 12px; border-radius: 3px; background: var(--cds-chart-grid, var(--color-border-line)); overflow: hidden; }
+  .rd-bar-fill { height: 100%; border-radius: 3px; }
+  .rd-bar-val { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rd-stack { display: flex; height: 18px; border-radius: 4px; overflow: hidden; gap: 2px; }
+  .rd-langs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px 14px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .rd-details { border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md, 12px); }
+  .rd-details summary { cursor: pointer; font-weight: var(--cds-font-weight-medium); }
+  .rd-details dl { display: grid; grid-template-columns: minmax(90px, max-content) 1fr; gap: 6px 16px; margin: 12px 0 0; max-width: 78ch; line-height: 1.6; }
+  .rd-details dt { color: var(--color-fg-muted); }
+  .rd-details dd { margin: 0; }
+  .rd-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .rd-btn { font: inherit; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 6px 12px; cursor: pointer; }
+  .rd-btn:hover { border-color: var(--color-fg-muted); }
+  .rd-btn:focus-visible, .rd-pick input:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+  .rd-btn[aria-expanded=true] { border-color: var(--color-fg); }
+  .rd-settings { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg, 16px); display: flex; flex-direction: column; gap: var(--cds-gap-md, 12px); }
+  .rd-settings h2 { font-size: var(--cds-font-size-body); }
+  .rd-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 14px; }
+  .rd-pick { display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; overflow-wrap: anywhere; line-height: 1.3; }
+  .rd-pick input { flex: none; margin: 0; }
+  .rd-field { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  [data-dash-source-state=refreshing] { opacity: .5; }
+</style>
+
+<div class="rd" lang="ko">
+  <header class="rd-head">
+    <h1 class="rd-title" id="title">Repo 운영 현황</h1>
+    <p class="rd-note">마지막 수집 <span data-draw="gen-at">—</span></p>
+    <p class="rd-error" id="load-error" hidden>데이터를 불러오지 못했습니다. 아직 수집 전이라면 GitHub의 Actions 탭에서 "Collect repo stats" 워크플로를 한 번 실행하세요.</p>
+    <p class="rd-take" id="takeaway">최근 14일 동안 선택한 repo의 방문은 <b data-draw="t-views" data-source="kpi" data-field="views14" data-row="0">—</b>회로, 직전 14일과 비교해 <b data-draw="t-change" data-source="kpi" data-field="views_change_pct" data-row="0">—</b> 달라졌습니다. 방문이 가장 많은 repo는 <b data-draw="t-top" data-source="kpi" data-field="top_repo" data-row="0">—</b>이고, 지금 확인이 필요한 repo는 <b data-draw="t-attn" data-source="kpi" data-field="attention" data-row="0">—</b>개입니다.</p>
+    <div class="rd-toolbar">
+      <button type="button" class="rd-btn" id="settings-btn" aria-expanded="false" aria-controls="settings">⚙ 설정</button>
+      <span class="rd-note">전체 <span data-draw="all-count" data-source="repos">—</span>개 가운데 <span data-draw="sel-count" data-source="kpi" data-field="repos" data-row="0">—</span>개 repo 표시 중</span>
+    </div>
+    <div class="rd-settings" id="settings" hidden>
+      <h2 class="rd-h2">표시할 repo</h2>
+      <div class="rd-picks" data-draw="repo-picks" data-source="repos" role="group" aria-label="표시할 repo"></div>
+      <div class="rd-field">
+        <label for="sort-by">정렬</label>
+        <select class="dash-select" id="sort-by">
+          <option value="visitors">방문자순</option>
+          <option value="status">상태순</option>
+          <option value="push">최근 push순</option>
+          <option value="stars">Stars순</option>
+          <option value="name">이름순</option>
+        </select>
+      </div>
+      <div class="rd-toolbar">
+        <button type="button" class="rd-btn" id="pick-all">전체 선택</button>
+        <button type="button" class="rd-btn" id="pick-reset">기본값으로</button>
+        <button type="button" class="rd-btn" id="settings-close">닫기</button>
+      </div>
+      <p class="rd-note">고른 repo는 화면 전체에 적용됩니다. 선택과 정렬은 이 브라우저에 저장됩니다.</p>
+    </div>
+    <p class="rd-note" id="none-note" hidden>표시할 repo가 없습니다. 설정에서 repo를 하나 이상 고르세요.</p>
+  </header>
+
+  <section class="rd-kpis" id="kpis" aria-label="핵심 지표">
+    <div class="rd-card" id="kpi-repos">
+      <span class="rd-kpi-label">표시 중인 repo</span>
+      <span class="rd-kpi-val" data-draw="k-repos" data-source="kpi" data-field="repos" data-row="0">—</span>
+      <span class="rd-kpi-sub">공개 <span data-draw="k-public" data-source="kpi" data-field="public_repos" data-row="0">—</span> · 비공개 <span data-draw="k-private" data-source="kpi" data-field="private_repos" data-row="0">—</span></span>
+    </div>
+    <div class="rd-card" id="kpi-views">
+      <span class="rd-kpi-label">방문 수 · 최근 14일</span>
+      <span class="rd-kpi-val" data-draw="k-views" data-source="kpi" data-field="views14" data-row="0">—</span>
+      <span class="rd-kpi-sub"><span data-draw="k-views-chg" data-source="kpi" data-field="views_change_pct" data-row="0">—</span> 직전 14일 대비 · 순 방문자 <span data-draw="k-uniques" data-source="kpi" data-field="uniques14" data-row="0">—</span></span>
+    </div>
+    <div class="rd-card" id="kpi-commits">
+      <span class="rd-kpi-label">커밋 수 · 최근 30일</span>
+      <span class="rd-kpi-val" data-draw="k-commits" data-source="kpi" data-field="commits30" data-row="0">—</span>
+      <span class="rd-kpi-sub"><span data-draw="k-commits-chg" data-source="kpi" data-field="commits_change_pct" data-row="0">—</span> 직전 30일 대비</span>
+    </div>
+    <div class="rd-card" id="kpi-actions">
+      <span class="rd-kpi-label">Actions 성공률 · 최근 14일</span>
+      <span class="rd-kpi-val" data-draw="k-rate" data-source="kpi" data-field="actions_rate_pct" data-row="0">—</span>
+      <span class="rd-kpi-sub">실행 <span data-draw="k-runs" data-source="kpi" data-field="actions_runs" data-row="0">—</span>회 중 실패 <span data-draw="k-fails" data-source="kpi" data-field="actions_failures" data-row="0">—</span>회</span>
+    </div>
+    <div class="rd-card" id="kpi-attention">
+      <span class="rd-kpi-label">확인이 필요한 repo</span>
+      <span class="rd-kpi-val" data-draw="k-attn" data-source="kpi" data-field="attention" data-row="0">—</span>
+      <span class="rd-kpi-sub">장애 <span data-draw="k-bad" data-source="kpi" data-field="failing" data-row="0">—</span> · 주의 <span data-draw="k-warn" data-source="kpi" data-field="stale" data-row="0">—</span></span>
+    </div>
+  </section>
+
+  <section class="rd-sec" id="repo-status">
+    <h2 class="rd-h2">Repo별 상태</h2>
+    <p class="rd-note">장애는 Pages 배포가 실패했거나 가장 최근 Actions 실행이 실패한 repo입니다. 주의는 마지막 push 후 <span data-draw="stale-days">—</span>일이 넘은 repo입니다. 방문 추이는 최근 28일의 일별 조회수입니다.</p>
+    <div class="rd-tablewrap">
+      <table class="rd-table" data-source="repo_status" data-row-key="repo">
+        <thead>
+          <tr>
+            <th data-field="repo">Repo</th>
+            <th data-field="status">상태</th>
+            <th data-field="reason">사유</th>
+            <th data-field="kind">유형</th>
+            <th data-field="last_push">마지막 push</th>
+            <th data-field="days_since" class="rd-num">경과</th>
+            <th data-field="uniques14" class="rd-num">14일 순 방문자</th>
+            <th data-field="views14" class="rd-num">14일 조회수</th>
+            <th>방문 추이</th>
+            <th data-field="stars" class="rd-num">Stars</th>
+            <th data-field="open_issues" class="rd-num">열린 이슈·PR</th>
+            <th data-field="actions_rate_pct" class="rd-num">Actions 성공률</th>
+          </tr>
+        </thead>
+        <tbody data-draw="repo-table"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rd-sec" id="traffic">
+    <div class="rd-rowhead">
+      <h2 class="rd-h2">일별 방문 추이 · 최근 28일</h2>
+      <select class="dash-select" id="traffic-repo" data-draw="traffic-repo" aria-label="Repo 선택" data-source="repos"></select>
+    </div>
+    <div class="rd-legend">
+      <span><span class="rd-sw" data-color="0"></span>조회수</span>
+      <span><span class="rd-sw" data-color="1"></span>순 방문자</span>
+    </div>
+    <div class="rd-chart rd-h240 dash-skeleton" id="traffic-chart" data-draw="traffic-chart" data-source="traffic"></div>
+    <p class="rd-note">GitHub은 방문 통계를 최근 14일치만 제공합니다. 수집을 시작한 날부터 기록이 쌓이며, 여기에는 최근 28일까지 표시합니다. 오늘 값은 집계 중이라 낮게 보일 수 있습니다.</p>
+  </section>
+
+  <div class="rd-grid2">
+    <section class="rd-sec" id="views-by-repo">
+      <h2 class="rd-h2">Repo별 방문 수 · 최근 14일</h2>
+      <div class="rd-chart rd-h220 dash-skeleton" data-draw="views-bars" data-source="views_by_repo"></div>
+    </section>
+    <section class="rd-sec" id="referrers">
+      <h2 class="rd-h2">유입 경로 상위 10곳 · 최근 14일</h2>
+      <div class="rd-chart rd-h220 dash-skeleton" data-draw="ref-bars" data-source="referrers"></div>
+    </section>
+  </div>
+
+  <section class="rd-sec" id="commit-heatmap">
+    <h2 class="rd-h2">일별 커밋 · 최근 52주</h2>
+    <div class="rd-chart rd-h130 dash-skeleton" data-draw="heat" data-source="commits"></div>
+    <p class="rd-note">선택한 repo의 기본 브랜치 커밋을 합친 값입니다. 색이 진할수록 그날 커밋이 많습니다.</p>
+  </section>
+
+  <section class="rd-sec" id="code-frequency">
+    <h2 class="rd-h2">주별 코드 변동량 · 최근 52주</h2>
+    <div class="rd-legend">
+      <span><span class="rd-sw" data-color="0"></span>추가된 줄</span>
+      <span><span class="rd-sw" data-color="1"></span>삭제된 줄</span>
+    </div>
+    <div class="rd-chart rd-h220 dash-skeleton" data-draw="codefreq" data-source="codefreq"></div>
+  </section>
+
+  <div class="rd-grid2">
+    <section class="rd-sec" id="punchcard">
+      <h2 class="rd-h2">요일·시간대별 커밋</h2>
+      <div class="rd-chart rd-h150 dash-skeleton" data-draw="punch" data-source="punchcard"></div>
+      <p class="rd-note">가로는 0시부터 23시, 세로는 요일입니다.</p>
+    </section>
+    <section class="rd-sec" id="languages">
+      <h2 class="rd-h2">언어 구성 · 선택한 repo 코드량 기준</h2>
+      <div class="rd-chart dash-skeleton" data-draw="langs" data-source="lang_share"></div>
+    </section>
+  </div>
+
+  <div class="rd-grid2">
+    <section class="rd-sec" id="actions-rate">
+      <h2 class="rd-h2">Repo별 Actions 성공률 · 최근 14일</h2>
+      <div class="rd-chart rd-h220 dash-skeleton" data-draw="actions-bars" data-source="actions_by_repo"></div>
+    </section>
+    <section class="rd-sec" id="actions-failures">
+      <h2 class="rd-h2">최근 실패한 실행</h2>
+      <div class="rd-tablewrap">
+        <table class="rd-table" data-source="actions" data-row-key="run_id">
+          <thead>
+            <tr>
+              <th data-field="started_at">시각 (UTC)</th>
+              <th data-field="repo">Repo</th>
+              <th data-field="workflow">Workflow</th>
+              <th data-field="duration_sec" class="rd-num">소요</th>
+            </tr>
+          </thead>
+          <tbody data-draw="fail-table"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <details class="rd-details" id="definitions">
+    <summary>지표 정의</summary>
+    <dl>
+      <dt>방문 수</dt><dd>GitHub의 repo 페이지 조회수입니다. github.io로 배포된 사이트 방문자는 포함되지 않습니다.</dd>
+      <dt>순 방문자</dt><dd>같은 사람의 반복 방문을 한 번으로 센 수입니다.</dd>
+      <dt>커밋 수</dt><dd>선택한 repo의 기본 브랜치에 올라간 커밋을 날짜별로 합친 값입니다. GitHub이 통계를 계산하는 중이면 다음 수집 때 채워집니다.</dd>
+      <dt>코드 변동량</dt><dd>주마다 추가되고 삭제된 줄 수의 합계입니다.</dd>
+      <dt>Actions 성공률</dt><dd>최근 14일 동안 실행된 워크플로 가운데 성공으로 끝난 비율입니다. 취소된 실행은 성공으로 세지 않습니다.</dd>
+      <dt>상태</dt><dd>장애, 주의, 정상 순으로 판정합니다. 포크한 repo도 같은 기준을 적용합니다.</dd>
+    </dl>
+  </details>
+</div>
+
+<script>
+  const R = (window.rd = {});
+  Object.defineProperty(R, 'STALE_DAYS', { get: () => (window.rdMeta && window.rdMeta.staleDays) || 30 });
+  R.DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+  R.repo = '';
+  R.picked = () => new Set(dash.params().repos || []);
+  R.sorters = {
+    visitors: (a, b) => b.uniques14 - a.uniques14 || b.views14 - a.views14,
+    status: (a, b) => ({ 장애: 0, 주의: 1, 정상: 2 })[a.status] - ({ 장애: 0, 주의: 1, 정상: 2 })[b.status] || b.uniques14 - a.uniques14,
+    push: (a, b) => (a.last_push < b.last_push ? 1 : a.last_push > b.last_push ? -1 : 0),
+    stars: (a, b) => b.stars - a.stars,
+    name: (a, b) => a.repo.localeCompare(b.repo),
+  };
+  R.num = d3.format(',');
+  R.parseDay = d3.utcParse('%Y-%m-%d');
+  R.enc = (s) => String(s).replace(/[%&=]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+  R.signed = (v) => (v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1) + '%');
+  R.ready = (el, ids, inline) => {
+    const st = ids.map((id) => dash.data(id).status);
+    const loading = st.includes('loading');
+    el.classList.toggle('dash-skeleton', loading);
+    if (st.every((s) => s === 'ok')) return true;
+    el.replaceChildren();
+    if (el.tagName !== 'TBODY' && el.tagName !== 'SELECT') {
+      el.textContent = loading ? (inline ? '—' : '') : st.includes('error') ? (inline ? '—' : '불러오지 못했습니다') : '—';
+    }
+    return false;
+  };
+  R.tip = (box) => {
+    const t = document.createElement('div');
+    t.className = 'rd-tip';
+    t.hidden = true;
+    box.append(t);
+    return {
+      show(x, y, lines) {
+        t.replaceChildren(...lines.map((l, i) => {
+          const d = document.createElement('div');
+          d.textContent = l;
+          if (i === 0) d.className = 'rd-tip-h';
+          return d;
+        }));
+        t.hidden = false;
+        const w = t.offsetWidth, bw = box.clientWidth;
+        t.style.left = Math.max(0, Math.min(bw - w, x - w / 2)) + 'px';
+        t.style.top = Math.max(-t.offsetHeight, y - t.offsetHeight - 12) + 'px';
+      },
+      hide() { t.hidden = true; },
+    };
+  };
+  R.el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  };
+  R.bars = (el, items, color, max) => {
+    const wrap = R.el('div', 'rd-bars');
+    const top = max ?? d3.max(items, (d) => d.value) ?? 1;
+    for (const d of items) {
+      const label = R.el('div', 'rd-bar-label', d.label);
+      const track = R.el('div', 'rd-bar-track');
+      const fill = R.el('div', 'rd-bar-fill');
+      fill.style.width = (top ? Math.max(0, (d.value / top) * 100) : 0) + '%';
+      fill.style.background = d.color || color;
+      track.append(fill);
+      const val = R.el('div', 'rd-bar-val');
+      const v = R.el('span', null, d.text);
+      v.dataset.source = d.source;
+      v.dataset.field = d.field;
+      v.dataset.where = d.where;
+      val.append(v);
+      if (d.sub) val.append(R.el('span', 'rd-dim', ' ' + d.sub));
+      wrap.append(label, track, val);
+    }
+    el.replaceChildren(wrap);
+  };
+
+  dash.calc('repo_status', {
+    title: 'Repo별 상태 판정',
+    description: 'repo마다 배포·Actions 결과와 마지막 push 후 경과일로 장애, 주의, 정상을 정하고 14일 방문 수와 Actions 성공률을 붙입니다.',
+    inputs: ['repos', 'traffic', 'actions'],
+    fn: (repos, traffic, actions) => {
+      if (!repos.length) return [];
+      const picked = new Set(dash.params().repos || []);
+      repos = repos.filter((r) => picked.has(r.repo));
+      const staleDays = window.rd.STALE_DAYS;
+      const dates = [...new Set(traffic.map((r) => r.date))].sort();
+      const asOf = Date.parse((window.rdMeta && window.rdMeta.generated_at) || new Date().toISOString());
+      const last14 = new Set(dates.slice(-14));
+      return repos.map((r) => {
+        const runs = actions.filter((a) => a.repo === r.repo).sort((a, b) => (a.started_at < b.started_at ? 1 : -1));
+        const ok = runs.filter((a) => a.conclusion === 'success').length;
+        const days = Math.max(0, Math.floor((asOf - Date.parse(r.pushed_at || r.last_push + 'T00:00:00Z')) / 86400000));
+        const mine = traffic.filter((t) => t.repo === r.repo && last14.has(t.date));
+        const views14 = mine.reduce((s, t) => s + (+t.views || 0), 0);
+        const uniques14 = mine.reduce((s, t) => s + (+t.uniques || 0), 0);
+        let status = '정상', reason = '';
+        if (r.pages_status === 'errored') { status = '장애'; reason = 'Pages 배포 실패'; }
+        else if (runs.length && runs[0].conclusion === 'failure') { status = '장애'; reason = '최근 Actions 실패'; }
+        else if (days > staleDays) { status = '주의'; reason = '장기간 업데이트 없음'; }
+        return {
+          repo: r.repo, url: r.url, status, reason, kind: r.kind, visibility: r.visibility, last_push: r.last_push, days_since: days,
+          uniques14, views14, stars: +r.stars || 0, open_issues: +r.open_issues || 0,
+          actions_rate_pct: runs.length ? Math.round((ok / runs.length) * 100) : null,
+        };
+      });
+    },
+  });
+
+  dash.calc('kpi', {
+    title: '핵심 지표 요약',
+    description: '상단 카드와 요약 문장에 쓰는 합계와 직전 기간 대비 변화율입니다.',
+    inputs: ['repos', 'traffic', 'commits', 'actions', 'repo_status'],
+    fn: (repos, traffic, commits, actions, repoStatus) => {
+      if (!repos.length) return [];
+      const picked = new Set(dash.params().repos || []);
+      const dates = [...new Set(traffic.map((r) => r.date))].sort();
+      repos = repos.filter((r) => picked.has(r.repo));
+      traffic = traffic.filter((r) => picked.has(r.repo));
+      commits = commits.filter((r) => picked.has(r.repo));
+      actions = actions.filter((r) => picked.has(r.repo));
+      const sum = (rows, f) => rows.reduce((s, r) => s + (+r[f] || 0), 0);
+      const pct = (a, b) => (b ? Math.round(((a - b) / b) * 1000) / 10 : null);
+      const last14 = new Set(dates.slice(-14)), prev14 = new Set(dates.length >= 28 ? dates.slice(-28, -14) : []);
+      const cur = traffic.filter((r) => last14.has(r.date)), prev = traffic.filter((r) => prev14.has(r.date));
+      const views14 = sum(cur, 'views'), viewsPrev = sum(prev, 'views');
+      const byRepo = new Map();
+      for (const r of cur) byRepo.set(r.repo, (byRepo.get(r.repo) || 0) + (+r.views || 0));
+      const top = [...byRepo].sort((a, b) => b[1] - a[1])[0] || ['', 0];
+      const today = ((window.rdMeta && window.rdMeta.generated_at) || new Date().toISOString()).slice(0, 10);
+      const ago = (n) => new Date(Date.parse(today) - n * 86400000).toISOString().slice(0, 10);
+      const commits30 = sum(commits.filter((r) => r.date > ago(30)), 'commits');
+      const commitsPrev = sum(commits.filter((r) => r.date > ago(60) && r.date <= ago(30)), 'commits');
+      const failures = actions.filter((a) => a.conclusion === 'failure').length;
+      const success = actions.filter((a) => a.conclusion === 'success').length;
+      const st = Array.isArray(repoStatus) ? repoStatus : [];
+      const failing = st.filter((r) => r.status === '장애').length, stale = st.filter((r) => r.status === '주의').length;
+      return [{
+        repos: repos.length,
+        public_repos: repos.filter((r) => r.visibility === 'public').length,
+        private_repos: repos.filter((r) => r.visibility !== 'public').length,
+        views14, views_prev14: viewsPrev, views_change_pct: pct(views14, viewsPrev), uniques14: sum(cur, 'uniques'),
+        top_repo: top[0], top_repo_views: top[1],
+        commits30, commits_prev30: commitsPrev, commits_change_pct: pct(commits30, commitsPrev),
+        actions_runs: actions.length, actions_failures: failures,
+        actions_rate_pct: actions.length ? Math.round((success / actions.length) * 100) : null,
+        attention: failing + stale, failing, stale,
+      }];
+    },
+  });
+
+  dash.calc('views_by_repo', {
+    title: 'Repo별 14일 방문 수',
+    description: '최근 14일의 조회수와 순 방문자를 repo별로 합친 값입니다.',
+    inputs: ['traffic'],
+    fn: (traffic) => {
+      const picked = new Set(dash.params().repos || []);
+      const dates = [...new Set(traffic.map((r) => r.date))].sort();
+      const last14 = new Set(dates.slice(-14));
+      const m = new Map();
+      for (const r of traffic) {
+        if (!last14.has(r.date) || !picked.has(r.repo)) continue;
+        const o = m.get(r.repo) || { repo: r.repo, views14: 0, uniques14: 0 };
+        o.views14 += +r.views || 0;
+        o.uniques14 += +r.uniques || 0;
+        m.set(r.repo, o);
+      }
+      return [...m.values()].sort((a, b) => b.views14 - a.views14);
+    },
+  });
+
+  dash.calc('lang_share', {
+    title: '언어별 코드량 비율',
+    description: '모든 repo의 언어별 코드량(bytes)을 합쳐 전체에서 차지하는 비율을 구합니다.',
+    inputs: ['languages'],
+    fn: (languages) => {
+      const picked = new Set(dash.params().repos || []);
+      const m = new Map();
+      for (const r of languages) if (picked.has(r.repo)) m.set(r.language, (m.get(r.language) || 0) + (+r.bytes || 0));
+      const total = [...m.values()].reduce((s, v) => s + v, 0);
+      return [...m].sort((a, b) => b[1] - a[1]).map(([language, bytes]) => ({ language, bytes, share_pct: total ? Math.round((bytes / total) * 1000) / 10 : 0 }));
+    },
+  });
+
+  dash.calc('actions_by_repo', {
+    title: 'Repo별 Actions 성공률',
+    description: '최근 14일의 워크플로 실행을 repo별로 세어 성공 비율을 구합니다.',
+    inputs: ['actions'],
+    fn: (actions) => {
+      const picked = new Set(dash.params().repos || []);
+      const m = new Map();
+      for (const a of actions) {
+        if (!picked.has(a.repo)) continue;
+        const o = m.get(a.repo) || { repo: a.repo, runs: 0, success: 0, failures: 0 };
+        o.runs += 1;
+        if (a.conclusion === 'success') o.success += 1;
+        if (a.conclusion === 'failure') o.failures += 1;
+        m.set(a.repo, o);
+      }
+      return [...m.values()].map((o) => ({ ...o, success_rate_pct: Math.round((o.success / o.runs) * 100) })).sort((a, b) => a.success_rate_pct - b.success_rate_pct || b.runs - a.runs);
+    },
+  });
+
+  // 요약 문장과 카드의 숫자
+  const kpiFields = {
+    't-views': (k) => R.num(k.views14),
+    't-change': (k) => R.signed(k.views_change_pct),
+    't-top': (k) => k.top_repo || '—',
+    't-attn': (k) => R.num(k.attention),
+    'k-repos': (k) => R.num(k.repos),
+    'sel-count': (k) => R.num(k.repos),
+    'k-public': (k) => R.num(k.public_repos),
+    'k-private': (k) => R.num(k.private_repos),
+    'k-views': (k) => R.num(k.views14),
+    'k-views-chg': (k) => R.signed(k.views_change_pct),
+    'k-uniques': (k) => R.num(k.uniques14),
+    'k-commits': (k) => R.num(k.commits30),
+    'k-commits-chg': (k) => R.signed(k.commits_change_pct),
+    'k-rate': (k) => (k.actions_rate_pct == null ? '—' : k.actions_rate_pct + '%'),
+    'k-runs': (k) => R.num(k.actions_runs),
+    'k-fails': (k) => R.num(k.actions_failures),
+    'k-attn': (k) => R.num(k.attention),
+    'k-bad': (k) => R.num(k.failing),
+    'k-warn': (k) => R.num(k.stale),
+  };
+  const kpiTone = { 'k-views-chg': 'views_change_pct', 'k-commits-chg': 'commits_change_pct' };
+  for (const [name, fmt] of Object.entries(kpiFields)) {
+    dash.draw(name, (el) => {
+      el.classList.remove('rd-good', 'rd-poor');
+      if (!R.ready(el, ['kpi'], true)) return;
+      const k = (dash.data('kpi').data || [])[0];
+      el.textContent = k ? fmt(k) : '—';
+      if (k && kpiTone[name]) {
+        const v = k[kpiTone[name]];
+        if (v > 0) el.classList.add('rd-good');
+        if (v < 0) el.classList.add('rd-poor');
+      }
+      if (k && name === 'k-attn' && k.attention > 0) el.classList.add('rd-poor');
+    });
+  }
+
+  dash.draw('stale-days', (el) => { el.textContent = R.STALE_DAYS; });
+  dash.draw('gen-at', (el) => {
+    const at = window.rdMeta && window.rdMeta.generated_at;
+    el.textContent = at ? new Date(at).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  });
+
+  dash.onData(() => {
+    document.querySelectorAll('.rd-sw[data-color]').forEach((s) => { s.style.background = dash.colors[+s.dataset.color]; });
+    const st = dash.data('repos').status;
+    document.querySelectorAll('#load-error').forEach((n) => { n.hidden = st !== 'error'; });
+    document.querySelectorAll('#none-note').forEach((n) => { n.hidden = st !== 'ok' || R.picked().size > 0; });
+    document.querySelectorAll('#sort-by').forEach((s) => { if (document.activeElement !== s) s.value = dash.params().sort || 'visitors'; });
+  });
+
+  // 설정: 표시할 repo와 정렬
+  R.toggleSettings = (open) => {
+    document.querySelectorAll('#settings').forEach((p) => { p.hidden = !open; });
+    document.querySelectorAll('#settings-btn').forEach((b) => { b.setAttribute('aria-expanded', String(open)); });
+    if (open) dash.draw('repo-picks');
+  };
+  document.querySelectorAll('#settings-btn').forEach((b) => b.addEventListener('click', () => R.toggleSettings(b.getAttribute('aria-expanded') !== 'true')));
+  document.querySelectorAll('#settings-close').forEach((b) => b.addEventListener('click', () => R.toggleSettings(false)));
+  document.querySelectorAll('#pick-reset').forEach((b) => b.addEventListener('click', () => dash.resetParams()));
+  document.querySelectorAll('#pick-all').forEach((b) => b.addEventListener('click', () => {
+    const g = dash.data('repos');
+    if (g.status === 'ok') dash.setParams({ repos: g.data.map((r) => r.repo) });
+  }));
+  document.querySelectorAll('#sort-by').forEach((s) => s.addEventListener('change', () => dash.setParams({ sort: s.value })));
+
+  dash.draw('all-count', (el) => {
+    if (!R.ready(el, ['repos'], true)) return;
+    el.textContent = R.num(dash.data('repos').data.length);
+  });
+
+  dash.draw('repo-picks', (el) => {
+    if (!R.ready(el, ['repos'])) return;
+    const picked = R.picked();
+    const focused = el.contains(document.activeElement) ? document.activeElement.value : null;
+    el.replaceChildren(...dash.data('repos').data.map((r) => {
+      const label = R.el('label', 'rd-pick');
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.value = r.repo;
+      box.checked = picked.has(r.repo);
+      box.onchange = () => {
+        const next = [...el.querySelectorAll('input:checked')].map((i) => i.value);
+        dash.setParams({ repos: next });
+      };
+      label.append(box, R.el('span', null, r.repo));
+      return label;
+    }));
+    if (focused != null) el.querySelectorAll('input').forEach((i) => { if (i.value === focused) i.focus(); });
+  });
+
+  // Repo 상태표
+  dash.draw('repo-table', (tb) => {
+    if (!R.ready(tb, ['repo_status', 'traffic'])) return;
+    const pill = { 장애: 'rd-pill--bad', 주의: 'rd-pill--warn', 정상: 'rd-pill--ok' };
+    const rows = (dash.data('repo_status').data || []).slice().sort(R.sorters[dash.params().sort] || R.sorters.visitors);
+    const series = d3.group(dash.data('traffic').data, (r) => r.repo);
+    tb.replaceChildren(...rows.map((r) => {
+      const tr = document.createElement('tr');
+      tr.dataset.key = R.enc(r.repo);
+      const td = (text, cls) => { const c = R.el('td', cls, text); tr.append(c); return c; };
+      const nameCell = td('', 'rd-name');
+      if (r.url) { const a = R.el('a', null, r.repo); a.href = r.url; a.target = '_blank'; a.rel = 'noopener'; nameCell.append(a); } else nameCell.textContent = r.repo;
+      td('').append(R.el('span', 'rd-pill ' + pill[r.status], r.status));
+      td(r.reason || '—', 'rd-dim');
+      td(r.kind, 'rd-dim');
+      td(r.last_push);
+      td(r.days_since + '일', 'rd-num');
+      td(R.num(r.uniques14), 'rd-num');
+      td(R.num(r.views14), 'rd-num');
+      const sp = td('');
+      const pts = (series.get(r.repo) || []).slice().sort((a, b) => (a.date < b.date ? -1 : 1)).map((d) => +d.views || 0);
+      if (pts.length > 1) {
+        const w = 84, h = 22, x = d3.scaleLinear([0, pts.length - 1], [1, w - 3]), y = d3.scaleLinear([0, d3.max(pts) || 1], [h - 2, 3]);
+        const svg = d3.create('svg').attr('width', w).attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', r.repo + ' 최근 28일 조회수 추이');
+        svg.append('path').attr('d', d3.area().x((d, i) => x(i)).y0(h - 1).y1((d) => y(d))(pts)).style('fill', dash.colors[0]).attr('fill-opacity', 0.15);
+        svg.append('path').attr('d', d3.line().x((d, i) => x(i)).y((d) => y(d))(pts)).attr('fill', 'none').style('stroke', dash.colors[0]).attr('stroke-width', 1.3);
+        svg.append('circle').attr('cx', x(pts.length - 1)).attr('cy', y(pts[pts.length - 1])).attr('r', 2.2).style('fill', dash.colors[0]);
+        sp.append(svg.node());
+      }
+      td(R.num(r.stars), 'rd-num');
+      td(R.num(r.open_issues), 'rd-num');
+      td(r.actions_rate_pct == null ? '—' : r.actions_rate_pct + '%', 'rd-num');
+      return tr;
+    }));
+  });
+
+  // 방문 추이: repo 선택
+  dash.draw('traffic-repo', (sel) => {
+    const g = dash.data('repos'), picked = R.picked();
+    const names = (g.status === 'ok' ? g.data : []).map((r) => r.repo).filter((n) => picked.has(n));
+    if (!names.includes(R.repo)) R.repo = '';
+    sel.replaceChildren(new Option('선택한 repo 전체', ''), ...names.map((n) => new Option(n)));
+    sel.value = R.repo;
+    sel.onchange = () => { R.repo = sel.value; dash.draw('traffic-chart'); };
+  });
+
+  dash.draw('traffic-chart', (el) => {
+    if (!R.ready(el, ['traffic'])) return;
+    const picked = R.picked();
+    if (R.repo && !picked.has(R.repo)) R.repo = '';
+    const src = dash.data('traffic').data.filter((r) => (R.repo ? r.repo === R.repo : picked.has(r.repo)));
+    const days = d3.rollups(src, (v) => ({ views: d3.sum(v, (r) => +r.views || 0), uniques: d3.sum(v, (r) => +r.uniques || 0) }), (r) => r.date)
+      .map(([date, o]) => ({ d: R.parseDay(date), ...o })).sort((a, b) => a.d - b.d).slice(-28);
+    if (!days.length) { el.replaceChildren(); el.textContent = '—'; return; }
+    const w = Math.max(240, el.clientWidth), h = 240, m = { t: 14, r: 8, b: 22, l: 4 };
+    const x = d3.scaleUtc(d3.extent(days, (d) => d.d), [m.l, w - m.r]);
+    const y = d3.scaleLinear([0, d3.max(days, (d) => d.views) || 1], [h - m.b, m.t]).nice(4);
+    const svg = d3.create('svg').attr('width', '100%').attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img')
+      .attr('aria-label', (R.repo || '선택한 repo 전체') + '의 최근 28일 일별 조회수와 순 방문자 꺾은선 그래프');
+    const fmtDay = d3.utcFormat('%-m/%-d');
+    for (const t of y.ticks(4)) {
+      svg.append('line').attr('class', 'rd-gridline').attr('x1', m.l).attr('x2', w - m.r).attr('y1', y(t)).attr('y2', y(t));
+      if (t > 0) svg.append('text').attr('class', 'rd-axis').attr('x', m.l).attr('y', y(t) - 4).text(R.num(t));
+    }
+    const every = w < 420 ? 7 : days.length > 20 ? 4 : 2;
+    days.forEach((d, i) => {
+      if ((days.length - 1 - i) % every) return;
+      svg.append('text').attr('class', 'rd-axis').attr('x', x(d.d)).attr('y', h - 5)
+        .attr('text-anchor', i === days.length - 1 ? 'end' : i === 0 ? 'start' : 'middle').text(fmtDay(d.d));
+    });
+    if (days.length >= 28) {
+      const bx = (x(days[days.length - 15].d) + x(days[days.length - 14].d)) / 2;
+      svg.append('line').attr('class', 'rd-refline').attr('x1', bx).attr('x2', bx).attr('y1', m.t).attr('y2', h - m.b);
+      svg.append('text').attr('class', 'rd-axis').attr('x', bx + 5).attr('y', m.t + 2).text('최근 14일');
+    }
+    svg.append('path').attr('d', d3.area().x((d) => x(d.d)).y0(y(0)).y1((d) => y(d.views))(days)).style('fill', dash.colors[0]).attr('fill-opacity', 0.1);
+    [['views', 0], ['uniques', 1]].forEach(([k, i]) => {
+      svg.append('path').attr('d', d3.line().x((d) => x(d.d)).y((d) => y(d[k]))(days)).attr('fill', 'none').style('stroke', dash.colors[i]).attr('stroke-width', 2).attr('stroke-linejoin', 'round');
+      const last = days[days.length - 1];
+      svg.append('circle').attr('cx', x(last.d)).attr('cy', y(last[k])).attr('r', 3.5).style('fill', dash.colors[i]);
+    });
+    const rule = svg.append('line').attr('class', 'rd-refline').attr('y1', m.t).attr('y2', h - m.b).attr('visibility', 'hidden');
+    const dots = [0, 1].map((i) => svg.append('circle').attr('r', 4).style('fill', dash.colors[i]).attr('visibility', 'hidden'));
+    el.replaceChildren(svg.node());
+    const tip = R.tip(el);
+    const full = d3.utcFormat('%Y-%m-%d');
+    const move = (ev) => {
+      const [px] = d3.pointer(ev, svg.node());
+      const sx = (px / svg.node().getBoundingClientRect().width) * w;
+      const i = d3.bisectCenter(days.map((d) => +d.d), +x.invert(sx));
+      const d = days[i];
+      rule.attr('x1', x(d.d)).attr('x2', x(d.d)).attr('visibility', 'visible');
+      dots[0].attr('cx', x(d.d)).attr('cy', y(d.views)).attr('visibility', 'visible');
+      dots[1].attr('cx', x(d.d)).attr('cy', y(d.uniques)).attr('visibility', 'visible');
+      const scale = svg.node().getBoundingClientRect().width / w;
+      tip.show(x(d.d) * scale, y(d.views), [full(d.d), '조회수 ' + R.num(d.views), '순 방문자 ' + R.num(d.uniques)]);
+    };
+    const leave = () => { rule.attr('visibility', 'hidden'); dots.forEach((c) => c.attr('visibility', 'hidden')); tip.hide(); };
+    svg.on('pointermove', move).on('pointerdown', move).on('pointerleave', leave);
+  });
+
+  dash.draw('views-bars', (el) => {
+    if (!R.ready(el, ['views_by_repo'])) return;
+    const rows = (dash.data('views_by_repo').data || []).slice(0, 10);
+    R.bars(el, rows.map((r) => ({ label: r.repo, value: r.views14, text: R.num(r.views14), source: 'views_by_repo', field: 'views14', where: 'repo=' + R.enc(r.repo) })), dash.colors[0]);
+  });
+
+  dash.draw('ref-bars', (el) => {
+    if (!R.ready(el, ['referrers'])) return;
+    const picked = R.picked();
+    const rows = d3.rollups(dash.data('referrers').data.filter((r) => picked.has(r.repo)), (v) => d3.sum(v, (r) => +r.views || 0), (r) => r.referrer)
+      .map(([referrer, views]) => ({ referrer, views })).sort((a, b) => b.views - a.views).slice(0, 10);
+    if (!rows.length) { el.replaceChildren(); el.textContent = '최근 14일 동안 기록된 유입 경로가 없습니다'; return; }
+    R.bars(el, rows.map((r) => ({ label: r.referrer, value: r.views, text: R.num(r.views), source: 'referrers', field: 'views', where: 'referrer=' + R.enc(r.referrer) })), dash.colors[1]);
+  });
+
+  // 커밋 히트맵
+  dash.draw('heat', (el) => {
+    if (!R.ready(el, ['commits'])) return;
+    const picked = R.picked();
+    const rows = d3.rollups(dash.data('commits').data.filter((r) => picked.has(r.repo)), (v) => d3.sum(v, (r) => +r.commits || 0), (r) => r.date)
+      .map(([date, c]) => ({ d: R.parseDay(date), c })).sort((a, b) => a.d - b.d);
+    if (!rows.length) { el.replaceChildren(); el.textContent = '—'; return; }
+    const w = Math.max(240, el.clientWidth), left = 22, top = 16;
+    const first = d3.utcSunday.floor(rows[0].d);
+    const weeks = d3.utcSunday.count(first, rows[rows.length - 1].d) + 1;
+    const step = Math.min(16, (w - left) / weeks), cell = Math.max(2, step - 2), h = top + step * 7;
+    const max = d3.max(rows, (r) => r.c) || 1;
+    const svg = d3.create('svg').attr('width', '100%').attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', '최근 52주 일별 커밋 수 히트맵');
+    [[1, '월'], [3, '수'], [5, '금']].forEach(([i, t]) => svg.append('text').attr('class', 'rd-axis').attr('x', 0).attr('y', top + i * step + cell * 0.85).attr('font-size', 10).text(t));
+    let lastX = -99;
+    for (const mo of d3.utcMonth.range(d3.utcMonth.ceil(rows[0].d), rows[rows.length - 1].d)) {
+      const mx = left + d3.utcSunday.count(first, mo) * step;
+      if (mx - lastX < 30 || mx > w - 24) continue;
+      lastX = mx;
+      svg.append('text').attr('class', 'rd-axis').attr('x', mx).attr('y', 10).text(d3.utcFormat('%-m월')(mo));
+    }
+    svg.append('g').selectAll('rect').data(rows).join('rect')
+      .attr('x', (r) => left + d3.utcSunday.count(first, r.d) * step).attr('y', (r) => top + r.d.getUTCDay() * step)
+      .attr('width', cell).attr('height', cell).attr('rx', Math.min(2, cell / 4))
+      .style('fill', (r) => (r.c ? dash.colors[0] : 'var(--cds-chart-grid, var(--color-border-line))'))
+      .attr('fill-opacity', (r) => (r.c ? 0.25 + 0.75 * (r.c / max) : 1));
+    el.replaceChildren(svg.node());
+    const tip = R.tip(el), full = d3.utcFormat('%Y-%m-%d');
+    const move = (ev) => {
+      const r = ev.target.__data__;
+      if (!r || !r.d) return tip.hide();
+      const b = ev.target.getBoundingClientRect(), o = el.getBoundingClientRect();
+      tip.show(b.left - o.left + b.width / 2, b.top - o.top, [full(r.d), '커밋 ' + R.num(r.c) + '개']);
+    };
+    svg.on('pointermove', move).on('pointerdown', move).on('pointerleave', () => tip.hide());
+  });
+
+  // 주별 코드 변동량
+  dash.draw('codefreq', (el) => {
+    if (!R.ready(el, ['codefreq'])) return;
+    const picked = R.picked();
+    const weeks = d3.rollups(dash.data('codefreq').data.filter((r) => picked.has(r.repo)), (v) => ({ a: d3.sum(v, (r) => +r.additions || 0), x: d3.sum(v, (r) => +r.deletions || 0) }), (r) => r.week)
+      .map(([wk, o]) => ({ d: R.parseDay(wk), ...o })).sort((a, b) => a.d - b.d).slice(-52);
+    if (!weeks.length) { el.replaceChildren(); el.textContent = '—'; return; }
+    const w = Math.max(240, el.clientWidth), h = 220, m = { t: 12, r: 4, b: 20, l: 4 };
+    const x = d3.scaleBand(weeks.map((d) => +d.d), [m.l, w - m.r]).paddingInner(0.25);
+    const y = d3.scaleLinear([-(d3.max(weeks, (d) => d.x) || 1), d3.max(weeks, (d) => d.a) || 1], [h - m.b, m.t]).nice(4);
+    const svg = d3.create('svg').attr('width', '100%').attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', '최근 52주 주별 추가·삭제 줄 수 막대그래프');
+    for (const t of y.ticks(4)) {
+      svg.append('line').attr('class', t === 0 ? 'rd-refline' : 'rd-gridline').attr('x1', m.l).attr('x2', w - m.r).attr('y1', y(t)).attr('y2', y(t));
+      if (t !== 0) svg.append('text').attr('class', 'rd-axis').attr('x', m.l).attr('y', y(t) - 4).text(R.num(Math.abs(t)));
+    }
+    let lastX = -99, lastMonth = -1;
+    weeks.forEach((d) => {
+      const mo = d.d.getUTCMonth(), px = x(+d.d);
+      if (mo === lastMonth) return;
+      lastMonth = mo;
+      if (px - lastX < 34 || px > w - 24) return;
+      lastX = px;
+      svg.append('text').attr('class', 'rd-axis').attr('x', px).attr('y', h - 5).text(d3.utcFormat('%-m월')(d.d));
+    });
+    const g = svg.append('g').selectAll('g').data(weeks).join('g');
+    g.append('rect').attr('x', (d) => x(+d.d)).attr('width', x.bandwidth()).attr('y', (d) => y(d.a)).attr('height', (d) => y(0) - y(d.a)).style('fill', dash.colors[0]);
+    g.append('rect').attr('x', (d) => x(+d.d)).attr('width', x.bandwidth()).attr('y', y(0)).attr('height', (d) => y(-d.x) - y(0)).style('fill', dash.colors[1]);
+    g.append('rect').attr('x', (d) => x(+d.d) - x.step() * 0.125).attr('width', x.step()).attr('y', m.t).attr('height', h - m.b - m.t).attr('fill', 'transparent');
+    el.replaceChildren(svg.node());
+    const tip = R.tip(el), full = d3.utcFormat('%Y-%m-%d');
+    const move = (ev) => {
+      const d = ev.target.__data__;
+      if (!d || !d.d) return tip.hide();
+      const scale = svg.node().getBoundingClientRect().width / w;
+      tip.show((x(+d.d) + x.bandwidth() / 2) * scale, y(d.a), [full(d.d) + ' 주', '추가 ' + R.num(d.a) + '줄', '삭제 ' + R.num(d.x) + '줄']);
+    };
+    svg.on('pointermove', move).on('pointerdown', move).on('pointerleave', () => tip.hide());
+  });
+
+  // 요일·시간대
+  dash.draw('punch', (el) => {
+    if (!R.ready(el, ['punchcard'])) return;
+    const picked = R.picked();
+    const sums = d3.rollup(dash.data('punchcard').data.filter((r) => picked.has(r.repo)), (v) => d3.sum(v, (r) => +r.commits || 0), (r) => +r.weekday, (r) => +r.hour);
+    const rows = d3.range(7).flatMap((wd) => d3.range(24).map((h) => ({ wd, name: R.DAYS[wd], h, c: (sums.get(wd) && sums.get(wd).get(h)) || 0 })));
+    if (!rows.length) { el.replaceChildren(); el.textContent = '—'; return; }
+    const w = Math.max(240, el.clientWidth), left = 20, top = 4, rowH = 18, bottom = 16;
+    const step = (w - left) / 24, h = top + rowH * 7 + bottom, max = d3.max(rows, (r) => r.c) || 1;
+    const svg = d3.create('svg').attr('width', '100%').attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', '요일과 시간대별 커밋 수 히트맵');
+    const names = new Map(rows.map((r) => [r.wd, r.name]));
+    for (const [wd, name] of names) svg.append('text').attr('class', 'rd-axis').attr('x', 0).attr('y', top + wd * rowH + 13).text(name);
+    [0, 6, 12, 18, 23].forEach((hr) => svg.append('text').attr('class', 'rd-axis').attr('x', left + hr * step + (step - 2) / 2).attr('y', h - 3).attr('text-anchor', 'middle').text(hr + '시'));
+    svg.append('g').selectAll('rect').data(rows).join('rect')
+      .attr('x', (r) => left + r.h * step).attr('y', (r) => top + r.wd * rowH).attr('width', Math.max(2, step - 2)).attr('height', rowH - 2).attr('rx', 2)
+      .style('fill', (r) => (r.c ? dash.colors[0] : 'var(--cds-chart-grid, var(--color-border-line))'))
+      .attr('fill-opacity', (r) => (r.c ? 0.2 + 0.8 * (r.c / max) : 1));
+    el.replaceChildren(svg.node());
+    const tip = R.tip(el);
+    const move = (ev) => {
+      const r = ev.target.__data__;
+      if (!r || r.h == null) return tip.hide();
+      const b = ev.target.getBoundingClientRect(), o = el.getBoundingClientRect();
+      tip.show(b.left - o.left + b.width / 2, b.top - o.top, [r.name + '요일 ' + r.h + '시', '커밋 ' + R.num(r.c) + '개']);
+    };
+    svg.on('pointermove', move).on('pointerdown', move).on('pointerleave', () => tip.hide());
+  });
+
+  // 언어 구성
+  dash.draw('langs', (el) => {
+    if (!R.ready(el, ['lang_share'])) return;
+    const rows = dash.data('lang_share').data || [];
+    if (!rows.length) { el.replaceChildren(); el.textContent = '—'; return; }
+    const stack = R.el('div', 'rd-stack');
+    stack.setAttribute('role', 'img');
+    stack.setAttribute('aria-label', '언어별 코드량 비율: ' + rows.map((r) => r.language + ' ' + r.share_pct + '%').join(', '));
+    const list = R.el('div', 'rd-langs');
+    rows.forEach((r, i) => {
+      const color = dash.colors[i % dash.colors.length];
+      const seg = R.el('div');
+      seg.style.flex = r.share_pct + ' 0 0';
+      seg.style.background = color;
+      stack.append(seg);
+      const item = R.el('div');
+      const sw = R.el('span', 'rd-sw');
+      sw.style.background = color;
+      const pct = R.el('span', null, r.share_pct.toFixed(1) + '%');
+      pct.dataset.source = 'lang_share';
+      pct.dataset.field = 'share_pct';
+      pct.dataset.where = 'language=' + R.enc(r.language);
+      item.append(sw, R.el('span', null, r.language + ' '), pct);
+      list.append(item);
+    });
+    el.replaceChildren(stack, list);
+  });
+
+  // Actions
+  dash.draw('actions-bars', (el) => {
+    if (!R.ready(el, ['actions_by_repo'])) return;
+    const rows = dash.data('actions_by_repo').data || [];
+    if (!rows.length) { el.replaceChildren(); el.textContent = '최근 14일 동안 실행된 워크플로가 없습니다'; return; }
+    R.bars(el, rows.map((r) => ({
+      label: r.repo, value: r.success_rate_pct, text: r.success_rate_pct + '%', sub: '· ' + r.runs + '회',
+      color: r.success_rate_pct < 80 ? 'var(--cds-chart-status-critical, var(--color-bad))' : dash.colors[0],
+      source: 'actions_by_repo', field: 'success_rate_pct', where: 'repo=' + R.enc(r.repo),
+    })), dash.colors[0], 100);
+  });
+
+  dash.draw('fail-table', (tb) => {
+    if (!R.ready(tb, ['actions'])) return;
+    const picked = R.picked();
+    const rows = dash.data('actions').data.filter((a) => a.conclusion === 'failure' && picked.has(a.repo)).sort((a, b) => (a.started_at < b.started_at ? 1 : -1)).slice(0, 8);
+    tb.replaceChildren(...rows.map((a) => {
+      const tr = document.createElement('tr');
+      tr.dataset.key = R.enc(a.run_id);
+      const when = R.el('td');
+      const link = R.el('a', null, String(a.started_at).slice(5, 16).replace('T', ' '));
+      if (a.url) { link.href = a.url; link.target = '_blank'; link.rel = 'noopener'; }
+      when.append(link);
+      tr.append(when, R.el('td', 'rd-name', a.repo), R.el('td', 'rd-dim', a.workflow), R.el('td', 'rd-num', R.num(+a.duration_sec) + '초'));
+      return tr;
+    }));
+  });
+</script>
+</div>
+</body>
+</html>
