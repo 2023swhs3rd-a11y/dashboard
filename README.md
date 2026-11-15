@@ -4,7 +4,7 @@ GitHub Actions가 주기적으로 repo 통계를 모아 `data/dashboard.json`에
 
 ## 설치 (한 번만)
 
-1. **repo 만들기**: GitHub에서 이 repo(`dashboard`)에 파일이 올라가 있습니다.
+1. **파일 올리기**: 완료되었습니다. 이 repo(`dashboard`)에 모든 파일이 올라가 있습니다.
 2. **토큰 만들기**: GitHub → Settings → Developer settings → Personal access tokens.
    - Fine-grained 토큰: Repository access는 "All repositories", Repository permissions는 **Administration: Read-only**(방문 통계), **Actions: Read-only**, **Contents: Read-only**, **Metadata: Read-only**, **Pages: Read-only**.
    - 또는 classic 토큰: `repo` 범위 하나.
