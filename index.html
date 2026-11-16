@@ -5,26 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Repo 운영 현황</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap">
 <style>
-  /* 자동차 계기판: 어두운 클러스터 위에 발광 계기와 경고등 */
   :root {
-    --color-fg: #e8edf2; --color-fg-muted: #8592a1; --color-bg: #05070a; --color-panel: #0c1116; --color-border-line: #1c252f;
-    --color-ok: #3ddc84; --color-warn: #ffb02e; --color-bad: #ff4d4d;
-    --accent: #38d0ff; --needle: #ff5a36;
-    --series-1: #38d0ff; --series-2: #ffae2b; --series-3: #3ddc84; --series-4: #a98bff; --series-5: #ff5fa2; --series-6: #6c7886;
+    --color-fg: #1b1f24; --color-fg-muted: #5c6672; --color-bg: #f6f7f9; --color-panel: #ffffff; --color-border-line: #dde1e6;
+    --color-ok: #17794a; --color-warn: #a86400; --color-bad: #c2362b;
+    --accent: #2f6fde; --needle: #1b1f24;
+    --series-1: #2f6fde; --series-2: #e07b2e; --series-3: #2a9d8f; --series-4: #8a63d2; --series-5: #c9498c; --series-6: #7a8594;
     --font-anthropic-sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
     --font-anthropic-serif: var(--font-anthropic-sans);
-    --font-digit: "Chakra Petch", ui-monospace, "SFMono-Regular", Menlo, monospace;
-    --cds-font-size-caption: 12px; --cds-font-size-body: 14px; --cds-font-size-heading: 14px; --cds-font-size-title: 26px;
-    --cds-font-weight-medium: 600; --cds-radius: 10px;
-    --cds-text-secondary: var(--color-fg-muted); --cds-chart-grid: #18212a; --cds-chart-reference: #4b5866; --cds-chart-status-critical: var(--color-bad);
-    --cds-surface-popover: #111820; --cds-border: #2a3644; --cds-shadow-popover: 0 6px 18px rgba(0, 0, 0, .6), 0 0 0 1px rgba(56, 208, 255, .12);
-    color-scheme: dark;
+    --cds-font-size-caption: 12px; --cds-font-size-body: 14px; --cds-font-size-heading: 17px; --cds-font-size-title: 28px;
+    --cds-font-weight-medium: 600; --cds-radius: 8px;
+    --cds-text-secondary: var(--color-fg-muted); --cds-chart-grid: #e6e9ed; --cds-chart-reference: #8f99a5; --cds-chart-status-critical: var(--color-bad);
+    --cds-surface-popover: #ffffff; --cds-border: var(--color-border-line); --cds-shadow-popover: 0 4px 14px rgba(20, 30, 45, .14);
+    color-scheme: light;
   }
-  body { margin: 0; color: var(--color-fg); background: radial-gradient(1200px 600px at 50% -10%, #0f1822 0%, var(--color-bg) 60%) fixed, var(--color-bg); }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-fg: #e6e9ee; --color-fg-muted: #9aa4b1; --color-bg: #12151a; --color-panel: #1a1e25; --color-border-line: #2c323b;
+      --color-ok: #4cc38a; --color-warn: #e0a23a; --color-bad: #f0695e;
+      --accent: #6aa0ff; --needle: #e6e9ee;
+      --series-1: #6aa0ff; --series-2: #f0984f; --series-3: #4fc4b5; --series-4: #ab8bea; --series-5: #e277ae; --series-6: #97a2b0;
+      --cds-chart-grid: #2a3039; --cds-chart-reference: #6f7a88; --cds-surface-popover: #222730; --cds-shadow-popover: 0 4px 14px rgba(0, 0, 0, .5);
+      color-scheme: dark;
+    }
+  }
+  body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
   [hidden] { display: none !important; }
   #dash-root { max-width: 1400px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
   .dash-select { font: inherit; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 5px 8px; max-width: 100%; }
@@ -183,61 +188,31 @@
   .rd-field { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   [data-dash-source-state=refreshing] { opacity: .5; }
 
-  /* 계기판 스킨 */
-  .rd-title { font-family: var(--font-digit), var(--font-anthropic-sans); font-weight: 600; letter-spacing: .02em; }
-  .rd-h2 { font-family: var(--font-digit), var(--font-anthropic-sans); color: var(--accent); letter-spacing: .06em; font-weight: 600; text-shadow: 0 0 10px rgba(56, 208, 255, .35); }
-  .rd-sec, .rd-settings { background: linear-gradient(180deg, #0d1319 0%, #090d12 100%); border: 1px solid var(--color-border-line); border-radius: 16px; padding: 16px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03); }
-  .rd-sec .rd-tablewrap { background: transparent; border-color: #18202a; }
-  .rd-table th { color: var(--color-fg-muted); font-family: var(--font-digit), var(--font-anthropic-sans); letter-spacing: .03em; }
-  .rd-table tbody tr:hover td { background: rgba(56, 208, 255, .04); }
-  .rd-pill { border: 0; background: rgba(255, 255, 255, .04); padding: 3px 10px 3px 8px; }
-  .rd-pill::before { box-shadow: 0 0 6px 1px currentColor; }
-  .rd-btn { background: #101820; border-color: #243140; }
-  .rd-btn:hover { border-color: var(--accent); box-shadow: 0 0 10px rgba(56, 208, 255, .2); }
-  .rd-take b { color: #fff; }
-  .rd-bar-track { background: #121a22; }
-  .rd-bar-fill { box-shadow: 0 0 10px -1px rgba(56, 208, 255, .35); }
-  .rd-chart svg path[fill="none"] { filter: drop-shadow(0 0 3px rgba(56, 208, 255, .45)); }
-  .rd-num, .rd-bar-val, .rd-axis { font-family: var(--font-digit), var(--font-anthropic-sans); }
-  .dash-skeleton { background: #0f161d; }
-
-  .rd-cluster { position: relative; display: flex; flex-direction: column; gap: 14px; padding: 18px 18px 20px; border-radius: 32px;
-    background: radial-gradient(ellipse 70% 90% at 50% 15%, #111b25 0%, #070a0e 70%); border: 1px solid #1b242e;
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, .04), inset 0 -30px 60px rgba(0, 0, 0, .55), 0 24px 60px rgba(0, 0, 0, .55); }
-  .rd-cluster::before { content: ""; position: absolute; inset: 6px; border-radius: 27px; border: 1px solid rgba(56, 208, 255, .07); pointer-events: none; }
-  .rd-lamps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; min-height: 30px; }
-  .rd-lamp { display: inline-flex; align-items: center; gap: 6px; color: #2c3742; font-size: var(--cds-font-size-caption); font-family: var(--font-digit), var(--font-anthropic-sans); transition: color .3s, filter .3s; }
-  .rd-lamp svg { width: 22px; height: 22px; flex: none; }
-  .rd-lamp.is-on.tone-bad { color: var(--color-bad); filter: drop-shadow(0 0 6px rgba(255, 77, 77, .75)); }
-  .rd-lamp.is-on.tone-warn { color: var(--color-warn); filter: drop-shadow(0 0 6px rgba(255, 176, 46, .7)); }
-  .rd-lamp.is-on.tone-ok { color: var(--color-ok); filter: drop-shadow(0 0 6px rgba(61, 220, 132, .6)); }
-  .rd-lamp.is-on.tone-info { color: var(--accent); filter: drop-shadow(0 0 6px rgba(56, 208, 255, .6)); }
-  .rd-gauges { display: grid; grid-template-columns: 1fr 1.32fr 1fr; align-items: center; gap: 4px; width: 100%; max-width: 960px; margin: 0 auto; }
+  /* 아날로그 계기 */
+  .rd-gaugepanel { display: flex; flex-direction: column; gap: 16px; padding: 18px 20px; background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 12px; }
+  .rd-status { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+  .rd-status .rd-pill { font-variant-numeric: tabular-nums; }
+  .rd-pill--off { color: var(--color-fg-muted); opacity: .75; }
+  .rd-gauges { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px 16px; align-items: start; }
   .rd-gauge { position: relative; min-width: 0; }
-  .rd-gauge svg { display: block; width: 100%; height: auto; overflow: visible; }
-  .rd-minis { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 12px; align-items: stretch; width: 100%; max-width: 960px; margin: 0 auto; }
-  .rd-mini svg { max-width: 240px; margin: 0 auto; }
-  .rd-mini { background: rgba(255, 255, 255, .015); border: 1px solid #161e27; border-radius: 16px; padding: 8px 10px 6px; min-width: 0; }
-  .rd-odo { display: flex; flex-direction: column; justify-content: center; gap: 10px; background: rgba(255, 255, 255, .015); border: 1px solid #161e27; border-radius: 16px; padding: 12px 14px; min-width: 0; }
-  .rd-odo-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
-  .rd-odo-label { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-family: var(--font-digit), var(--font-anthropic-sans); letter-spacing: .05em; }
-  .rd-digits { display: inline-flex; gap: 2px; font-family: var(--font-digit); font-size: 20px; font-variant-numeric: tabular-nums; }
-  .rd-digit { display: inline-block; min-width: .8em; text-align: center; padding: 2px 3px; border-radius: 4px; color: #f2f5f8;
-    background: linear-gradient(180deg, #1a232d 0%, #0b1015 50%, #1a232d 100%); border: 1px solid #222d39; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .6); }
-  .rd-digit:last-child { color: #0b1015; background: linear-gradient(180deg, #f4f6f8 0%, #c9d1d9 50%, #f4f6f8 100%); }
-  .rd-odo-small { font-family: var(--font-digit); color: var(--color-fg); font-size: 15px; font-variant-numeric: tabular-nums; }
-  .g-face { fill: url(#g-face); }
-  .g-num { fill: #f4f7fa; font-family: var(--font-digit); font-weight: 600; }
-  .g-tick { stroke: #8a97a6; }
-  .g-tick-l { fill: #8a97a6; font-family: var(--font-digit); }
-  .g-label { fill: var(--color-fg-muted); font-family: var(--font-digit), var(--font-anthropic-sans); }
-  .g-sub { font-family: var(--font-digit), var(--font-anthropic-sans); }
-  @media (max-width: 760px) {
-    .rd-cluster { padding: 14px 10px 16px; border-radius: 24px; }
-    .rd-gauges { grid-template-columns: 1fr 1fr; }
-    .rd-gauge--main { grid-column: 1 / -1; order: -1; width: 100%; max-width: 380px; justify-self: center; }
-    .rd-minis { grid-template-columns: 1fr 1fr; }
-    .rd-odo { grid-column: 1 / -1; }
+  .rd-gauge svg { display: block; width: 100%; max-width: 230px; height: auto; margin: 0 auto; overflow: visible; }
+  .rd-gauge--main svg { max-width: 260px; }
+  .rd-facts { display: flex; flex-wrap: wrap; gap: 6px 24px; padding-top: 12px; border-top: 1px solid var(--color-border-line); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .rd-facts b { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); font-variant-numeric: tabular-nums; margin-left: 4px; }
+  .g-num { fill: var(--color-fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .g-tick { stroke: var(--color-fg-muted); }
+  .g-tick-l { fill: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+  .g-label { fill: var(--color-fg-muted); }
+  .g-sub { font-variant-numeric: tabular-nums; }
+  @media (max-width: 1000px) {
+    .rd-gauges { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .rd-gauge--main { order: -1; }
+  }
+  @media (max-width: 560px) {
+    .rd-gaugepanel { padding: 14px 12px; }
+    .rd-gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rd-gauge--main { grid-column: 1 / -1; }
+    .rd-gauge--main svg { max-width: 280px; }
   }
 </style>
 
@@ -274,22 +249,21 @@
     <p class="rd-note" id="none-note" hidden>표시할 repo가 없습니다. 설정에서 repo를 하나 이상 고르세요.</p>
   </header>
 
-  <section class="rd-cluster" id="cluster" aria-label="계기판">
-    <div class="rd-lamps" data-draw="lamps" data-source="kpi" role="list" aria-label="경고등"></div>
+  <section class="rd-gaugepanel" id="gauges" aria-label="핵심 지표">
+    <div class="rd-status" data-draw="lamps" data-source="kpi" role="list" aria-label="상태"></div>
     <div class="rd-gauges">
-      <div class="rd-gauge rd-gauge--side" id="g-uniques" data-draw="g-uniques" data-source="kpi"></div>
       <div class="rd-gauge rd-gauge--main" id="g-views" data-draw="g-views" data-source="kpi"></div>
-      <div class="rd-gauge rd-gauge--side" id="g-commits" data-draw="g-commits" data-source="kpi"></div>
+      <div class="rd-gauge" id="g-uniques" data-draw="g-uniques" data-source="kpi"></div>
+      <div class="rd-gauge" id="g-commits" data-draw="g-commits" data-source="kpi"></div>
+      <div class="rd-gauge" id="g-rate" data-draw="g-rate" data-source="kpi"></div>
+      <div class="rd-gauge" id="g-attn" data-draw="g-attn" data-source="kpi"></div>
     </div>
-    <div class="rd-minis">
-      <div class="rd-mini rd-gauge" id="g-rate" data-draw="g-rate" data-source="kpi"></div>
-      <div class="rd-mini rd-gauge" id="g-attn" data-draw="g-attn" data-source="kpi"></div>
-      <div class="rd-odo" id="odometer">
-        <div class="rd-odo-row"><span class="rd-odo-label">ODO · 누적 조회수</span><span class="rd-digits" data-draw="odo" data-source="kpi" data-field="views_all" data-row="0"></span></div>
-        <div class="rd-odo-row"><span class="rd-odo-label">TRIP · 14일 클론</span><span class="rd-odo-small" data-draw="trip" data-source="kpi" data-field="clones14" data-row="0">—</span></div>
-        <div class="rd-odo-row"><span class="rd-odo-label">표시 repo · Stars</span><span class="rd-odo-small"><span data-draw="k-repos" data-source="kpi" data-field="repos" data-row="0">—</span> · ★ <span data-draw="k-stars" data-source="kpi" data-field="stars_total" data-row="0">—</span></span></div>
-        <div class="rd-odo-row"><span class="rd-odo-label">마지막 수집</span><span class="rd-odo-small" data-draw="clock">—</span></div>
-      </div>
+    <div class="rd-facts">
+      <span>누적 조회수<b data-draw="odo" data-source="kpi" data-field="views_all" data-row="0">—</b></span>
+      <span>14일 클론<b data-draw="trip" data-source="kpi" data-field="clones14" data-row="0">—</b></span>
+      <span>표시 repo<b data-draw="k-repos" data-source="kpi" data-field="repos" data-row="0">—</b></span>
+      <span>Stars<b data-draw="k-stars" data-source="kpi" data-field="stars_total" data-row="0">—</b></span>
+      <span>마지막 수집<b data-draw="clock">—</b></span>
     </div>
   </section>
 
@@ -710,73 +684,52 @@
   R.kpi = () => (dash.data('kpi').data || [])[0];
   // o: {label, unit, value, max, prev, prevLabel, zones, sub, sweep (270|180), size, fmt, color}
   R.gauge = (el, o) => {
-    const half = o.sweep === 180, W = 220, H = half ? 172 : 206, cx = W / 2, cy = half ? 116 : 108;
-    const R0 = half ? 92 : 92, a0 = half ? -90 : -135, span = half ? 180 : 270;
+    const W = 220, H = 184, cx = 110, cy = 108, R0 = 78, a0 = -125, span = 250;
     const max = o.max, clamp = (v) => Math.max(0, Math.min(max, v));
     const ang = (v) => a0 + (span * clamp(v)) / max;
     const pt = (a, r) => [cx + r * Math.sin((a * Math.PI) / 180), cy - r * Math.cos((a * Math.PI) / 180)];
     const arc = (v0, v1, r) => {
-      const [x0, y0] = pt(ang(v0), r), [x1, y1] = pt(ang(v1), r), large = ((ang(v1) - ang(v0)) > 180) ? 1 : 0;
+      const [x0, y0] = pt(ang(v0), r), [x1, y1] = pt(ang(v1), r), large = ang(v1) - ang(v0) > 180 ? 1 : 0;
       return `M${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1}`;
     };
-    const id = 'g' + (++R.gid), color = o.color || 'var(--accent)';
+    const color = o.color || 'var(--accent)';
     const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img')
       .attr('aria-label', `${o.label} ${o.fmt(o.value)}${o.unit || ''}` + (o.prev != null ? `, ${o.prevLabel} ${o.fmt(o.prev)}` : ''));
-    const defs = svg.append('defs');
-    const rg = defs.append('radialGradient').attr('id', id + 'f').attr('cx', '50%').attr('cy', half ? '90%' : '45%').attr('r', '60%');
-    rg.append('stop').attr('offset', '0%').attr('stop-color', '#14202b');
-    rg.append('stop').attr('offset', '100%').attr('stop-color', '#05080b');
-    const glow = defs.append('filter').attr('id', id + 'g').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
-    glow.append('feGaussianBlur').attr('stdDeviation', 3).attr('result', 'b');
-    const mg = glow.append('feMerge'); mg.append('feMergeNode').attr('in', 'b'); mg.append('feMergeNode').attr('in', 'SourceGraphic');
-    // 테두리와 판
-    if (half) svg.append('path').attr('d', `M${cx - 104},${cy} A104,104 0 0 1 ${cx + 104},${cy} Z`).attr('fill', `url(#${id}f)`).attr('stroke', '#1f2934').attr('stroke-width', 1.5);
-    else svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 104).attr('fill', `url(#${id}f)`).attr('stroke', '#1f2934').attr('stroke-width', 1.5);
-    svg.append('path').attr('d', arc(0, max, R0 - 10)).attr('fill', 'none').attr('stroke', '#16202a').attr('stroke-width', 9).attr('stroke-linecap', 'round');
-    for (const z of o.zones || []) svg.append('path').attr('d', arc(z.from, z.to, R0 - 1)).attr('fill', 'none').style('stroke', z.color).attr('stroke-width', 4).attr('opacity', 0.9);
-    const valArc = svg.append('path').attr('fill', 'none').style('stroke', color).attr('stroke-width', 9).attr('stroke-linecap', 'round').attr('filter', `url(#${id}g)`);
-    // 눈금
-    const ticks = d3.ticks(0, max, half ? 4 : 5).filter((t) => t <= max);
+    svg.append('path').attr('d', arc(0, max, R0)).attr('fill', 'none').style('stroke', 'var(--cds-chart-grid)').attr('stroke-width', 5);
+    for (const z of o.zones || []) svg.append('path').attr('d', arc(z.from, z.to, R0)).attr('fill', 'none').style('stroke', z.color).attr('stroke-width', 5).attr('opacity', 0.28);
+    const valArc = svg.append('path').attr('fill', 'none').style('stroke', color).attr('stroke-width', 5);
+    const ticks = d3.ticks(0, max, 5).filter((t) => t <= max);
     const step = ticks.length > 1 ? ticks[1] - ticks[0] : max;
-    for (let v = 0; v <= max + 1e-9; v += step / 5) {
+    for (let v = 0; v <= max + 1e-9; v += step / 2) {
       const major = ticks.some((t) => Math.abs(t - v) < 1e-9);
-      const [x0, y0] = pt(ang(v), R0 + 3), [x1, y1] = pt(ang(v), R0 - (major ? 8 : 3));
-      svg.append('line').attr('class', 'g-tick').attr('x1', x0).attr('y1', y0).attr('x2', x1).attr('y2', y1).attr('stroke-width', major ? 2 : 1).attr('opacity', major ? 1 : 0.55);
+      const [x0, y0] = pt(ang(v), R0 + 5), [x1, y1] = pt(ang(v), R0 + (major ? 12 : 8));
+      svg.append('line').attr('class', 'g-tick').attr('x1', x0).attr('y1', y0).attr('x2', x1).attr('y2', y1).attr('stroke-width', major ? 1.4 : 1).attr('opacity', major ? 0.9 : 0.45);
     }
     for (const t of ticks) {
-      const [x, y] = pt(ang(t), R0 - (half ? 22 : 24));
-      svg.append('text').attr('class', 'g-tick-l').attr('x', x).attr('y', y + 4).attr('text-anchor', 'middle').attr('font-size', half ? 10 : 11).text(o.tickFmt ? o.tickFmt(t) : R.num(t));
+      const [x, y] = pt(ang(t), R0 + 22);
+      svg.append('text').attr('class', 'g-tick-l').attr('x', x).attr('y', y + 3.5).attr('text-anchor', 'middle').attr('font-size', 10).text(o.tickFmt ? o.tickFmt(t) : R.num(t));
     }
-    // 직전 기간 표시
     if (o.prev != null && o.prev > 0) {
-      const [px, py] = pt(ang(o.prev), R0 + 7), [qx, qy] = pt(ang(o.prev) - 3, R0 + 15), [rx, ry] = pt(ang(o.prev) + 3, R0 + 15);
-      svg.append('path').attr('d', `M${px},${py} L${qx},${qy} L${rx},${ry} Z`).style('fill', 'var(--color-warn)').attr('opacity', 0.9);
+      const [x0, y0] = pt(ang(o.prev), R0 - 7), [x1, y1] = pt(ang(o.prev), R0 + 4);
+      svg.append('line').attr('x1', x0).attr('y1', y0).attr('x2', x1).attr('y2', y1).style('stroke', 'var(--color-fg-muted)').attr('stroke-width', 2);
     }
-    // 글자
-    if (half) {
-      svg.append('text').attr('class', 'g-num').attr('x', cx).attr('y', cy + 36).attr('text-anchor', 'middle').attr('font-size', 24).text(o.fmt(o.value) + (o.unit || ''));
-      svg.append('text').attr('class', 'g-label').attr('x', cx).attr('y', cy + 54).attr('text-anchor', 'middle').attr('font-size', 11).text(o.label);
-    } else {
-      svg.append('text').attr('class', 'g-label').attr('x', cx).attr('y', cy - 34).attr('text-anchor', 'middle').attr('font-size', 11).text(o.label);
-      svg.append('text').attr('class', 'g-num').attr('x', cx).attr('y', cy + 50).attr('text-anchor', 'middle').attr('font-size', o.size === 'main' ? 32 : 28).text(o.fmt(o.value));
-      if (o.unit) svg.append('text').attr('class', 'g-label').attr('x', cx).attr('y', cy + 66).attr('text-anchor', 'middle').attr('font-size', 10).text(o.unit);
-      if (o.sub) svg.append('text').attr('class', 'g-sub').attr('x', cx).attr('y', cy + 88).attr('text-anchor', 'middle').attr('font-size', 11).style('fill', o.subColor || 'var(--color-fg-muted)').text(o.sub);
-    }
-    // 바늘
-    const needle = svg.append('g').attr('filter', `url(#${id}g)`);
-    needle.append('path').attr('d', `M${cx - 3.2},${cy + 12} L${cx},${cy - (R0 - 14)} L${cx + 3.2},${cy + 12} Z`).style('fill', 'var(--needle)');
-    svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 9).attr('fill', '#0b1015').attr('stroke', '#2c3a48').attr('stroke-width', 2);
-    svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 3).style('fill', 'var(--needle)');
+    svg.append('text').attr('class', 'g-num').attr('x', cx).attr('y', cy + 42).attr('text-anchor', 'middle').attr('font-size', o.size === 'main' ? 26 : 22).text(o.fmt(o.value) + (o.unit || ''));
+    svg.append('text').attr('class', 'g-label').attr('x', cx).attr('y', cy + 59).attr('text-anchor', 'middle').attr('font-size', 11).text(o.label);
+    if (o.sub) svg.append('text').attr('class', 'g-sub').attr('x', cx).attr('y', cy + 73).attr('text-anchor', 'middle').attr('font-size', 10).style('fill', o.subColor || 'var(--color-fg-muted)').text(o.sub);
+    const needle = svg.append('g');
+    needle.append('path').attr('d', `M${cx - 1.6},${cy + 10} L${cx - 0.5},${cy - (R0 - 4)} L${cx + 0.5},${cy - (R0 - 4)} L${cx + 1.6},${cy + 10} Z`).style('fill', 'var(--needle)');
+    svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 4.5).style('fill', 'var(--needle)');
+    svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', 1.6).style('fill', 'var(--color-panel)');
     const target = o.value == null ? 0 : o.value;
     const from = el.__gv != null && el.__gmax === max ? el.__gv : 0;
     const setTo = (v) => {
       needle.attr('transform', `rotate(${ang(v)} ${cx} ${cy})`);
-      valArc.attr('d', v > 0 ? arc(0, v, R0 - 10) : null);
+      valArc.attr('d', v > 0 ? arc(0, v, R0) : null);
     };
     el.replaceChildren(svg.node());
     if (R.motion() && from !== target) {
       setTo(from);
-      d3.select(svg.node()).transition().duration(from === 0 ? 1100 : 600).ease(d3.easeCubicOut)
+      d3.select(svg.node()).transition().duration(from === 0 ? 700 : 400).ease(d3.easeCubicOut)
         .tween('needle', () => { const i = d3.interpolateNumber(from, target); return (t) => setTo(i(t)); });
     } else setTo(target);
     el.__gv = target; el.__gmax = max;
@@ -787,34 +740,25 @@
     if (!k) { el.replaceChildren(); el.textContent = '—'; return; }
     R.gauge(el, make(k));
   });
-  R.chg = (v) => (v == null ? '직전 기간 기록 없음' : (v > 0 ? '▲ ' : v < 0 ? '▼ ' : '') + Math.abs(v).toFixed(1) + '% 직전 대비');
+  R.chg = (v) => (v == null ? '직전 기간 기록 없음' : (v > 0 ? '+' : '') + v.toFixed(1) + '% 직전 대비');
   R.chgColor = (v) => (v == null || v === 0 ? 'var(--color-fg-muted)' : v > 0 ? 'var(--color-ok)' : 'var(--color-bad)');
 
-  R.gaugeDraw('g-views', (k) => {
-    const max = R.niceMax(Math.max(k.views14, k.views_prev14 || 0) * 1.15);
-    return { label: '조회수 · 14일', unit: 'VIEWS', value: k.views14, max, prev: k.views_prev14 || null, prevLabel: '직전 14일', fmt: R.num, size: 'main',
-      zones: [{ from: max * 0.85, to: max, color: 'var(--color-bad)' }], sub: R.chg(k.views_change_pct), subColor: R.chgColor(k.views_change_pct) };
-  });
-  R.gaugeDraw('g-uniques', (k) => ({ label: '순 방문자 · 14일', unit: 'repo별 합', value: k.uniques14, max: R.niceMax(k.uniques14 * 1.25), fmt: R.num, color: 'var(--series-3)', sub: '여러 날 방문은 1명' }));
-  R.gaugeDraw('g-commits', (k) => {
-    const max = R.niceMax(Math.max(k.commits30, k.commits_prev30 || 0) * 1.15);
-    return { label: '커밋 · 30일', unit: 'COMMITS', value: k.commits30, max, prev: k.commits_prev30 || null, prevLabel: '직전 30일', fmt: R.num, color: 'var(--series-2)',
-      sub: R.chg(k.commits_change_pct), subColor: R.chgColor(k.commits_change_pct) };
-  });
-  R.gaugeDraw('g-rate', (k) => ({ label: 'Actions 성공률 · 14일', unit: '%', value: k.actions_rate_pct ?? 0, max: 100, sweep: 180, fmt: (v) => (k.actions_rate_pct == null ? '—' : String(Math.round(v))),
-    tickFmt: (t) => (t === 0 ? 'E' : t === 100 ? 'F' : String(t)), zones: [{ from: 0, to: 80, color: 'var(--color-bad)' }],
-    color: (k.actions_rate_pct ?? 100) < 80 ? 'var(--color-bad)' : 'var(--color-ok)' }));
-  R.gaugeDraw('g-attn', (k) => ({ label: '확인 필요 repo', unit: '개', value: k.attention, max: Math.max(4, k.repos), sweep: 180, fmt: R.num,
-    tickFmt: (t) => (t === 0 ? 'C' : String(t)), zones: [{ from: Math.max(4, k.repos) * 0.5, to: Math.max(4, k.repos), color: 'var(--color-bad)' }],
-    color: k.failing ? 'var(--color-bad)' : k.attention ? 'var(--color-warn)' : 'var(--color-ok)' }));
+  R.gaugeDraw('g-views', (k) => ({ label: '조회수 · 14일', value: k.views14, max: R.niceMax(Math.max(k.views14, k.views_prev14 || 0) * 1.1),
+    prev: k.views_prev14 || null, prevLabel: '직전 14일', fmt: R.num, size: 'main', sub: R.chg(k.views_change_pct), subColor: R.chgColor(k.views_change_pct) }));
+  R.gaugeDraw('g-uniques', (k) => ({ label: '순 방문자 · 14일', value: k.uniques14, max: R.niceMax(k.uniques14 * 1.2), fmt: R.num, color: 'var(--series-3)', sub: 'repo별 합' }));
+  R.gaugeDraw('g-commits', (k) => ({ label: '커밋 · 30일', value: k.commits30, max: R.niceMax(Math.max(k.commits30, k.commits_prev30 || 0) * 1.1),
+    prev: k.commits_prev30 || null, prevLabel: '직전 30일', fmt: R.num, color: 'var(--series-2)', sub: R.chg(k.commits_change_pct), subColor: R.chgColor(k.commits_change_pct) }));
+  R.gaugeDraw('g-rate', (k) => ({ label: 'Actions 성공률 · 14일', unit: '%', value: k.actions_rate_pct ?? 0, max: 100, fmt: (v) => (k.actions_rate_pct == null ? '—' : String(Math.round(v))),
+    zones: [{ from: 0, to: 80, color: 'var(--color-bad)' }], color: (k.actions_rate_pct ?? 100) < 80 ? 'var(--color-bad)' : 'var(--color-ok)',
+    sub: '실행 ' + R.num(k.actions_runs) + '회 · 실패 ' + R.num(k.actions_failures) + '회' }));
+  R.gaugeDraw('g-attn', (k) => ({ label: '확인 필요 repo', unit: '개', value: k.attention, max: Math.max(5, k.repos), fmt: R.num,
+    color: k.failing ? 'var(--color-bad)' : k.attention ? 'var(--color-warn)' : 'var(--color-ok)', sub: '장애 ' + R.num(k.failing) + ' · 주의 ' + R.num(k.stale) }));
 
   // 주행거리계
   dash.draw('odo', (el) => {
     if (!R.ready(el, ['kpi'], true)) return;
     const k = R.kpi();
-    const digits = String(k ? k.views_all : 0).padStart(6, '0');
-    el.replaceChildren(...[...digits].map((c) => R.el('span', 'rd-digit', c)));
-    el.setAttribute('aria-label', '누적 조회수 ' + (k ? R.num(k.views_all) : '—'));
+    el.textContent = k ? R.num(k.views_all) : '—';
   });
   dash.draw('clock', (el) => {
     const at = window.rdMeta && window.rdMeta.generated_at;
@@ -822,36 +766,22 @@
   });
 
   // 경고등
-  R.icons = {
-    alert: '<path d="M12 3 2.5 20h19L12 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 9.5v5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.3" fill="currentColor"/>',
-    clock: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5.5l3.5 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-    globe: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/>',
-    gear: '<circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-    sync: '<path d="M20 12a8 8 0 0 1-14 5.3M4 12a8 8 0 0 1 14-5.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18 3v4h-4M6 21v-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
-    check: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="m7.5 12.3 3 3 6-6.3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
-  };
   dash.draw('lamps', (el) => {
     if (!R.ready(el, ['kpi'])) return;
     const k = R.kpi() || {};
     const at = window.rdMeta && window.rdMeta.generated_at;
     const ageH = at ? (Date.now() - Date.parse(at)) / 3600000 : 0;
-    const lamps = [
-      { icon: 'alert', tone: 'bad', on: k.failing > 0, text: '장애 ' + (k.failing || 0) },
-      { icon: 'clock', tone: 'warn', on: k.stale > 0, text: '업데이트 없음 ' + (k.stale || 0) },
-      { icon: 'globe', tone: 'bad', on: k.pages_failed > 0, text: 'Pages 실패 ' + (k.pages_failed || 0) },
-      { icon: 'gear', tone: 'warn', on: k.actions_failures > 0, text: 'Actions 실패 ' + (k.actions_failures || 0) + '회' },
-      { icon: 'sync', tone: 'warn', on: ageH > 3, text: ageH > 3 ? '수집 지연 ' + Math.floor(ageH) + '시간' : '수집 정상' },
-      { icon: 'check', tone: 'ok', on: k.attention === 0, text: '모두 정상' },
+    const items = [
+      { tone: 'bad', on: k.failing > 0, text: '장애 ' + (k.failing || 0) },
+      { tone: 'warn', on: k.stale > 0, text: '업데이트 없음 ' + (k.stale || 0) },
+      { tone: 'bad', on: k.pages_failed > 0, text: 'Pages 실패 ' + (k.pages_failed || 0) },
+      { tone: 'warn', on: k.actions_failures > 0, text: 'Actions 실패 ' + (k.actions_failures || 0) + '회' },
+      { tone: 'warn', on: ageH > 3, text: ageH > 3 ? '수집 지연 ' + Math.floor(ageH) + '시간' : '수집 정상' },
     ];
-    el.replaceChildren(...lamps.map((l) => {
-      const s = R.el('span', 'rd-lamp tone-' + l.tone + (l.on ? ' is-on' : ''));
+    if (k.attention === 0) items.unshift({ tone: 'ok', on: true, text: '모두 정상' });
+    el.replaceChildren(...items.map((i) => {
+      const s = R.el('span', 'rd-pill ' + (i.on ? 'rd-pill--' + i.tone : 'rd-pill--off'), i.text);
       s.setAttribute('role', 'listitem');
-      s.setAttribute('aria-label', l.text + (l.on ? ' (켜짐)' : ' (꺼짐)'));
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('viewBox', '0 0 24 24');
-      svg.setAttribute('aria-hidden', 'true');
-      svg.innerHTML = R.icons[l.icon];
-      s.append(svg, R.el('span', null, l.text));
       return s;
     }));
   });
