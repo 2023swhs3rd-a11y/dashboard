@@ -88,6 +88,13 @@ for (const r of list) {
 
   // 방문·클론 (최근 14일, 이전 기록과 합침)
   const [views, clones] = await Promise.all([gh(`${base}/traffic/views`), gh(`${base}/traffic/clones`)]);
+  // GitHub이 주는 14일 합계. 순 방문자는 여러 날 온 사람을 한 번만 셉니다.
+  const rec = out.repos[out.repos.length - 1];
+  const before = (prev.repos || []).find((x) => x.repo === repo) || {};
+  rec.views14 = views.ok ? views.value.count ?? null : before.views14 ?? null;
+  rec.uniques14 = views.ok ? views.value.uniques ?? null : before.uniques14 ?? null;
+  rec.clones14 = clones.ok ? clones.value.count ?? null : before.clones14 ?? null;
+  rec.clone_uniques14 = clones.ok ? clones.value.uniques ?? null : before.clone_uniques14 ?? null;
   if (views.ok) for (const v of views.value.views || []) {
     const k = day(v.timestamp) + '|' + repo;
     trafficMap.set(k, { ...(trafficMap.get(k) || { clones: 0 }), date: day(v.timestamp), repo, views: v.count, uniques: v.uniques });

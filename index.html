@@ -228,7 +228,7 @@
     <div class="rd-card" id="kpi-views">
       <span class="rd-kpi-label">방문 수 · 최근 14일</span>
       <span class="rd-kpi-val" data-draw="k-views" data-source="kpi" data-field="views14" data-row="0">—</span>
-      <span class="rd-kpi-sub"><span data-draw="k-views-chg" data-source="kpi" data-field="views_change_pct" data-row="0">—</span> 직전 14일 대비 · 순 방문자 <span data-draw="k-uniques" data-source="kpi" data-field="uniques14" data-row="0">—</span></span>
+      <span class="rd-kpi-sub"><span data-draw="k-views-chg" data-source="kpi" data-field="views_change_pct" data-row="0">—</span> 직전 14일 대비 · 순 방문자(repo별 합) <span data-draw="k-uniques" data-source="kpi" data-field="uniques14" data-row="0">—</span></span>
     </div>
     <div class="rd-card" id="kpi-commits">
       <span class="rd-kpi-label">커밋 수 · 최근 30일</span>
@@ -396,7 +396,7 @@
     <summary>지표 정의</summary>
     <dl>
       <dt>방문 수</dt><dd>GitHub의 repo 페이지 조회수입니다. github.io로 배포된 사이트 방문자는 포함되지 않습니다.</dd>
-      <dt>순 방문자</dt><dd>같은 사람의 반복 방문을 한 번으로 센 수입니다.</dd>
+      <dt>순 방문자</dt><dd>방문한 서로 다른 사람 수입니다. 표의 14일 순 방문자는 GitHub이 주는 14일 값으로, 여러 날 방문한 사람도 한 번만 셉니다. 일별 그래프의 순 방문자는 그날 하루 기준입니다. 상단 카드는 repo별 값을 더한 것이라, 여러 repo를 본 사람은 repo마다 한 번씩 들어갑니다.</dd>
       <dt>커밋 수</dt><dd>선택한 repo의 기본 브랜치에 올라간 커밋을 날짜별로 합친 값입니다. GitHub이 통계를 계산하는 중이면 다음 수집 때 채워집니다.</dd>
       <dt>코드 변동량</dt><dd>주마다 추가되고 삭제된 줄 수의 합계입니다.</dd>
       <dt>Actions 성공률</dt><dd>최근 14일 동안 실행된 워크플로 가운데 성공으로 끝난 비율입니다. 취소된 실행은 성공으로 세지 않습니다.</dd>
@@ -500,7 +500,7 @@
         const days = Math.max(0, Math.floor((asOf - Date.parse(r.pushed_at || r.last_push + 'T00:00:00Z')) / 86400000));
         const mine = traffic.filter((t) => t.repo === r.repo && last14.has(t.date));
         const views14 = mine.reduce((s, t) => s + (+t.views || 0), 0);
-        const uniques14 = mine.reduce((s, t) => s + (+t.uniques || 0), 0);
+        const uniques14 = r.uniques14 != null ? +r.uniques14 : mine.reduce((s, t) => s + (+t.uniques || 0), 0);
         let status = '정상', reason = '';
         if (r.pages_status === 'errored') { status = '장애'; reason = 'Pages 배포 실패'; }
         else if (runs.length && runs[0].conclusion === 'failure') { status = '장애'; reason = '최근 Actions 실패'; }
@@ -546,7 +546,7 @@
         repos: repos.length,
         public_repos: repos.filter((r) => r.visibility === 'public').length,
         private_repos: repos.filter((r) => r.visibility !== 'public').length,
-        views14, views_prev14: viewsPrev, views_change_pct: pct(views14, viewsPrev), uniques14: sum(cur, 'uniques'),
+        views14, views_prev14: viewsPrev, views_change_pct: pct(views14, viewsPrev), uniques14: repos.reduce((s, r) => s + (r.uniques14 != null ? +r.uniques14 : sum(cur.filter((t) => t.repo === r.repo), 'uniques')), 0),
         top_repo: top[0], top_repo_views: top[1],
         commits30, commits_prev30: commitsPrev, commits_change_pct: pct(commits30, commitsPrev),
         actions_runs: actions.length, actions_failures: failures,
@@ -558,9 +558,9 @@
 
   dash.calc('views_by_repo', {
     title: 'Repo별 14일 방문 수',
-    description: '최근 14일의 조회수와 순 방문자를 repo별로 합친 값입니다.',
-    inputs: ['traffic'],
-    fn: (traffic) => {
+    description: '최근 14일의 조회수를 repo별로 합치고, 순 방문자는 GitHub이 주는 14일 값(여러 날 온 사람은 한 번)을 씁니다.',
+    inputs: ['traffic', 'repos'],
+    fn: (traffic, repos) => {
       const picked = new Set(dash.params().repos || []);
       const dates = [...new Set(traffic.map((r) => r.date))].sort();
       const last14 = new Set(dates.slice(-14));
@@ -572,6 +572,8 @@
         o.uniques14 += +r.uniques || 0;
         m.set(r.repo, o);
       }
+      const u14 = new Map(repos.filter((r) => r.uniques14 != null).map((r) => [r.repo, +r.uniques14]));
+      for (const o of m.values()) if (u14.has(o.repo)) o.uniques14 = u14.get(o.repo);
       return [...m.values()].sort((a, b) => b.views14 - a.views14);
     },
   });
