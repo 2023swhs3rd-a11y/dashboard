@@ -28,7 +28,7 @@
   }
   body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
   [hidden] { display: none !important; }
-  #dash-root { max-width: 1120px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+  #dash-root { max-width: 1400px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
   .dash-select { font: inherit; color: var(--color-fg); background-color: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 5px 8px; max-width: 100%; }
   .dash-skeleton { background: var(--cds-chart-grid); border-radius: var(--cds-radius); color: transparent; }
   @media (prefers-reduced-motion: no-preference) { .dash-skeleton { animation: rd-pulse 1.2s ease-in-out infinite alternate; } }
@@ -134,10 +134,23 @@
   .rd-refline { stroke: var(--cds-chart-reference, var(--color-fg-muted)); stroke-width: 1; stroke-dasharray: 3 3; }
   .rd-tip { position: absolute; z-index: 2; pointer-events: none; background: var(--cds-surface-popover, var(--color-bg)); border: 1px solid var(--cds-border, var(--color-border-line)); box-shadow: var(--cds-shadow-popover, none); border-radius: var(--cds-radius); padding: 6px 9px; font-size: var(--cds-font-size-caption); color: var(--cds-text-secondary, var(--color-fg-muted)); white-space: nowrap; font-variant-numeric: tabular-nums; line-height: 1.5; }
   .rd-tip-h { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+  .rd-sec { container-type: inline-size; }
   .rd-tablewrap { overflow-x: auto; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); }
   .rd-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-  .rd-table th { text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); padding: 9px 12px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
-  .rd-table td { padding: 9px 12px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; vertical-align: middle; }
+  .rd-table th { text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); padding: 9px 8px; border-bottom: 1px solid var(--color-border-line); line-height: 1.3; vertical-align: bottom; }
+  .rd-table td { padding: 9px 8px; border-bottom: 1px solid var(--color-border-line); vertical-align: middle; overflow-wrap: anywhere; line-height: 1.35; }
+  .rd-table th:first-child, .rd-table td:first-child { padding-left: 14px; }
+  .rd-table th:last-child, .rd-table td:last-child { padding-right: 14px; }
+  .rd-table .rd-nowrap, .rd-table .rd-num { white-space: nowrap; overflow-wrap: normal; }
+  .rd-reason { display: block; margin-top: 3px; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  @container (max-width: 980px) { .rd-c-kind, .rd-c-issues { display: none; } }
+  @container (max-width: 800px) { .rd-c-stars, .rd-c-push { display: none; } }
+  @container (max-width: 640px) { .rd-c-spark, .rd-c-rate { display: none; } }
+  @container (max-width: 460px) { .rd-c-days, .rd-c-dur { display: none; } }
+  .rd-sw--ok { background: var(--color-ok); } .rd-sw--bad { background: var(--color-bad); } .rd-sw--etc { background: var(--series-6); }
+  .rd-rows { display: grid; grid-template-columns: minmax(84px, 30%) 1fr; gap: 8px 10px; align-items: center; }
+  .rd-h200 { min-height: 200px; }
+  .rd-h260 { min-height: 260px; }
   .rd-table tbody tr:last-child td { border-bottom: 0; }
   .rd-table .rd-num { text-align: right; }
   .rd-table .rd-name { font-weight: var(--cds-font-weight-medium); }
@@ -236,23 +249,22 @@
 
   <section class="rd-sec" id="repo-status">
     <h2 class="rd-h2">Repo별 상태</h2>
-    <p class="rd-note">장애는 Pages 배포가 실패했거나 가장 최근 Actions 실행이 실패한 repo입니다. 주의는 마지막 push 후 <span data-draw="stale-days">—</span>일이 넘은 repo입니다. 방문 추이는 최근 28일의 일별 조회수입니다.</p>
+    <p class="rd-note">화면이 좁으면 일부 열을 숨깁니다. 장애는 Pages 배포가 실패했거나 가장 최근 Actions 실행이 실패한 repo입니다. 주의는 마지막 push 후 <span data-draw="stale-days">—</span>일이 넘은 repo입니다. 방문 추이는 최근 28일의 일별 조회수입니다.</p>
     <div class="rd-tablewrap">
       <table class="rd-table" data-source="repo_status" data-row-key="repo">
         <thead>
           <tr>
             <th data-field="repo">Repo</th>
             <th data-field="status">상태</th>
-            <th data-field="reason">사유</th>
-            <th data-field="kind">유형</th>
-            <th data-field="last_push">마지막 push</th>
-            <th data-field="days_since" class="rd-num">경과</th>
+            <th data-field="kind" class="rd-c-kind">유형</th>
+            <th data-field="last_push" class="rd-c-push">마지막 push</th>
+            <th data-field="days_since" class="rd-num rd-c-days">경과</th>
             <th data-field="uniques14" class="rd-num">14일 순 방문자</th>
             <th data-field="views14" class="rd-num">14일 조회수</th>
-            <th>방문 추이</th>
-            <th data-field="stars" class="rd-num">Stars</th>
-            <th data-field="open_issues" class="rd-num">열린 이슈·PR</th>
-            <th data-field="actions_rate_pct" class="rd-num">Actions 성공률</th>
+            <th class="rd-c-spark">방문 추이</th>
+            <th data-field="stars" class="rd-num rd-c-stars">Stars</th>
+            <th data-field="open_issues" class="rd-num rd-c-issues">열린 이슈·PR</th>
+            <th data-field="actions_rate_pct" class="rd-num rd-c-rate">Actions 성공률</th>
           </tr>
         </thead>
         <tbody data-draw="repo-table"></tbody>
@@ -272,6 +284,19 @@
     <div class="rd-chart rd-h240 dash-skeleton" id="traffic-chart" data-draw="traffic-chart" data-source="traffic"></div>
     <p class="rd-note">GitHub은 방문 통계를 최근 14일치만 제공합니다. 수집을 시작한 날부터 기록이 쌓이며, 여기에는 최근 28일까지 표시합니다. 오늘 값은 집계 중이라 낮게 보일 수 있습니다.</p>
   </section>
+
+  <div class="rd-grid2">
+    <section class="rd-sec" id="views-area">
+      <h2 class="rd-h2">Repo별 일별 조회수 · 최근 28일</h2>
+      <div class="rd-chart rd-h260 dash-skeleton" data-draw="area-repo" data-source="traffic"></div>
+      <p class="rd-note">조회수가 많은 repo부터 아래에서 위로 쌓았습니다. 여섯 개가 넘으면 나머지는 기타로 묶습니다.</p>
+    </section>
+    <section class="rd-sec" id="clones-daily">
+      <h2 class="rd-h2">일별 클론 수 · 최근 28일</h2>
+      <div class="rd-chart rd-h200 dash-skeleton" data-draw="clones" data-source="traffic"></div>
+      <p class="rd-note">클론에는 Actions와 Pages 배포가 코드를 내려받은 횟수도 포함됩니다.</p>
+    </section>
+  </div>
 
   <div class="rd-grid2">
     <section class="rd-sec" id="views-by-repo">
@@ -300,6 +325,18 @@
   </section>
 
   <div class="rd-grid2">
+    <section class="rd-sec" id="commits-by-repo">
+      <h2 class="rd-h2">Repo별 커밋 수 · 최근 30일</h2>
+      <div class="rd-chart rd-h200 dash-skeleton" data-draw="commit-bars" data-source="commits"></div>
+    </section>
+    <section class="rd-sec" id="effort-vs-views">
+      <h2 class="rd-h2">커밋과 방문 비교</h2>
+      <div class="rd-chart rd-h260 dash-skeleton" data-draw="scatter" data-source="commits traffic"></div>
+      <p class="rd-note">가로는 최근 30일 커밋 수, 세로는 최근 14일 조회수입니다. 점 하나가 repo 하나입니다.</p>
+    </section>
+  </div>
+
+  <div class="rd-grid2">
     <section class="rd-sec" id="punchcard">
       <h2 class="rd-h2">요일·시간대별 커밋</h2>
       <div class="rd-chart rd-h150 dash-skeleton" data-draw="punch" data-source="punchcard"></div>
@@ -308,6 +345,27 @@
     <section class="rd-sec" id="languages">
       <h2 class="rd-h2">언어 구성 · 선택한 repo 코드량 기준</h2>
       <div class="rd-chart dash-skeleton" data-draw="langs" data-source="lang_share"></div>
+    </section>
+  </div>
+
+  <section class="rd-sec" id="languages-by-repo">
+    <h2 class="rd-h2">Repo별 언어 구성</h2>
+    <div class="rd-chart dash-skeleton" data-draw="lang-repo" data-source="languages"></div>
+  </section>
+
+  <div class="rd-grid2">
+    <section class="rd-sec" id="actions-daily">
+      <h2 class="rd-h2">일별 Actions 실행 결과 · 최근 14일</h2>
+      <div class="rd-legend">
+        <span><span class="rd-sw rd-sw--ok"></span>성공</span>
+        <span><span class="rd-sw rd-sw--bad"></span>실패</span>
+        <span><span class="rd-sw rd-sw--etc"></span>취소·기타</span>
+      </div>
+      <div class="rd-chart rd-h200 dash-skeleton" data-draw="actions-daily" data-source="actions"></div>
+    </section>
+    <section class="rd-sec" id="workflow-duration">
+      <h2 class="rd-h2">오래 걸리는 워크플로 · 평균 소요 시간</h2>
+      <div class="rd-chart rd-h200 dash-skeleton" data-draw="wf-bars" data-source="actions"></div>
     </section>
   </div>
 
@@ -325,7 +383,7 @@
               <th data-field="started_at">시각 (UTC)</th>
               <th data-field="repo">Repo</th>
               <th data-field="workflow">Workflow</th>
-              <th data-field="duration_sec" class="rd-num">소요</th>
+              <th data-field="duration_sec" class="rd-num rd-c-dur">소요</th>
             </tr>
           </thead>
           <tbody data-draw="fail-table"></tbody>
@@ -654,14 +712,15 @@
       const td = (text, cls) => { const c = R.el('td', cls, text); tr.append(c); return c; };
       const nameCell = td('', 'rd-name');
       if (r.url) { const a = R.el('a', null, r.repo); a.href = r.url; a.target = '_blank'; a.rel = 'noopener'; nameCell.append(a); } else nameCell.textContent = r.repo;
-      td('').append(R.el('span', 'rd-pill ' + pill[r.status], r.status));
-      td(r.reason || '—', 'rd-dim');
-      td(r.kind, 'rd-dim');
-      td(r.last_push);
-      td(r.days_since + '일', 'rd-num');
+      const stCell = td('');
+      stCell.append(R.el('span', 'rd-pill rd-nowrap ' + pill[r.status], r.status));
+      if (r.reason) stCell.append(R.el('span', 'rd-reason', r.reason));
+      td(r.kind, 'rd-dim rd-nowrap rd-c-kind');
+      td(r.last_push, 'rd-nowrap rd-c-push');
+      td(r.days_since + '일', 'rd-num rd-c-days');
       td(R.num(r.uniques14), 'rd-num');
       td(R.num(r.views14), 'rd-num');
-      const sp = td('');
+      const sp = td('', 'rd-c-spark');
       const pts = (series.get(r.repo) || []).slice().sort((a, b) => (a.date < b.date ? -1 : 1)).map((d) => +d.views || 0);
       if (pts.length > 1) {
         const w = 84, h = 22, x = d3.scaleLinear([0, pts.length - 1], [1, w - 3]), y = d3.scaleLinear([0, d3.max(pts) || 1], [h - 2, 3]);
@@ -671,9 +730,9 @@
         svg.append('circle').attr('cx', x(pts.length - 1)).attr('cy', y(pts[pts.length - 1])).attr('r', 2.2).style('fill', dash.colors[0]);
         sp.append(svg.node());
       }
-      td(R.num(r.stars), 'rd-num');
-      td(R.num(r.open_issues), 'rd-num');
-      td(r.actions_rate_pct == null ? '—' : r.actions_rate_pct + '%', 'rd-num');
+      td(R.num(r.stars), 'rd-num rd-c-stars');
+      td(R.num(r.open_issues), 'rd-num rd-c-issues');
+      td(r.actions_rate_pct == null ? '—' : r.actions_rate_pct + '%', 'rd-num rd-c-rate');
       return tr;
     }));
   });
@@ -890,6 +949,228 @@
     el.replaceChildren(stack, list);
   });
 
+  // 날짜별 누적 막대 (클론, Actions 결과)
+  R.dayBars = (el, days, aria, unit) => {
+    if (!days.length) { el.replaceChildren(); el.textContent = '—'; return; }
+    const w = Math.max(240, el.clientWidth), h = 200, m = { t: 12, r: 4, b: 20, l: 4 };
+    const x = d3.scaleBand(days.map((d) => +d.d), [m.l, w - m.r]).paddingInner(0.25);
+    const y = d3.scaleLinear([0, d3.max(days, (d) => d3.sum(d.parts, (p) => p.v)) || 1], [h - m.b, m.t]).nice(4);
+    const svg = d3.create('svg').attr('width', '100%').attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', aria);
+    for (const t of y.ticks(4).filter(Number.isInteger)) {
+      svg.append('line').attr('class', 'rd-gridline').attr('x1', m.l).attr('x2', w - m.r).attr('y1', y(t)).attr('y2', y(t));
+      if (t > 0) svg.append('text').attr('class', 'rd-axis').attr('x', m.l).attr('y', y(t) - 4).text(R.num(t));
+    }
+    const every = Math.max(1, Math.ceil(days.length / Math.max(2, Math.floor(w / 64)))), fmt = d3.utcFormat('%-m/%-d');
+    days.forEach((d, i) => {
+      if ((days.length - 1 - i) % every) return;
+      svg.append('text').attr('class', 'rd-axis').attr('x', x(+d.d) + x.bandwidth() / 2).attr('y', h - 5).attr('text-anchor', 'middle').text(fmt(d.d));
+    });
+    const g = svg.append('g').selectAll('g').data(days).join('g');
+    g.each(function (d) {
+      let acc = 0;
+      for (const p of d.parts) {
+        if (!p.v) continue;
+        d3.select(this).append('rect').attr('x', x(+d.d)).attr('width', x.bandwidth()).attr('y', y(acc + p.v)).attr('height', y(acc) - y(acc + p.v)).style('fill', p.color);
+        acc += p.v;
+      }
+      d3.select(this).append('rect').datum(d).attr('x', x(+d.d) - x.step() * 0.125).attr('width', x.step()).attr('y', m.t).attr('height', h - m.b - m.t).attr('fill', 'transparent');
+    });
+    el.replaceChildren(svg.node());
+    const tip = R.tip(el), full = d3.utcFormat('%Y-%m-%d');
+    const move = (ev) => {
+      const d = ev.target.__data__;
+      if (!d || !d.parts) return tip.hide();
+      const scale = svg.node().getBoundingClientRect().width / w;
+      tip.show((x(+d.d) + x.bandwidth() / 2) * scale, y(d3.sum(d.parts, (p) => p.v)), [full(d.d), ...d.parts.map((p) => p.label + ' ' + R.num(p.v) + unit)]);
+    };
+    svg.on('pointermove', move).on('pointerdown', move).on('pointerleave', () => tip.hide());
+  };
+
+  dash.draw('clones', (el) => {
+    if (!R.ready(el, ['traffic'])) return;
+    const picked = R.picked();
+    const days = d3.rollups(dash.data('traffic').data.filter((r) => picked.has(r.repo)), (v) => d3.sum(v, (r) => +r.clones || 0), (r) => r.date)
+      .map(([date, n]) => ({ d: R.parseDay(date), parts: [{ v: n, color: dash.colors[2], label: '클론' }] })).sort((a, b) => a.d - b.d).slice(-28);
+    R.dayBars(el, days, '선택한 repo의 일별 클론 수 막대그래프', '회');
+  });
+
+  dash.draw('actions-daily', (el) => {
+    if (!R.ready(el, ['actions'])) return;
+    const picked = R.picked();
+    const runs = dash.data('actions').data.filter((a) => picked.has(a.repo));
+    if (!runs.length) { el.replaceChildren(); el.textContent = '최근 14일 동안 실행된 워크플로가 없습니다'; return; }
+    const days = d3.rollups(runs, (v) => v, (a) => String(a.started_at).slice(0, 10)).map(([date, v]) => {
+      const ok = v.filter((a) => a.conclusion === 'success').length, bad = v.filter((a) => a.conclusion === 'failure').length;
+      return { d: R.parseDay(date), parts: [
+        { v: ok, color: 'var(--color-ok)', label: '성공' },
+        { v: bad, color: 'var(--color-bad)', label: '실패' },
+        { v: v.length - ok - bad, color: 'var(--series-6)', label: '취소·기타' },
+      ] };
+    }).sort((a, b) => a.d - b.d);
+    R.dayBars(el, days, '일별 Actions 실행 결과 누적 막대그래프', '회');
+  });
+
+  dash.draw('wf-bars', (el) => {
+    if (!R.ready(el, ['actions'])) return;
+    const picked = R.picked();
+    const rows = d3.rollups(dash.data('actions').data.filter((a) => picked.has(a.repo)), (v) => ({ avg: Math.round(d3.mean(v, (a) => +a.duration_sec || 0)), n: v.length }), (a) => a.repo + ' · ' + a.workflow)
+      .map(([name, o]) => ({ name, ...o })).sort((a, b) => b.avg - a.avg).slice(0, 8);
+    if (!rows.length) { el.replaceChildren(); el.textContent = '최근 14일 동안 실행된 워크플로가 없습니다'; return; }
+    R.bars(el, rows.map((r) => ({ label: r.name, value: r.avg, text: R.num(r.avg) + '초', sub: '· ' + r.n + '회', source: 'actions', field: 'duration_sec', where: '' })), dash.colors[3]);
+  });
+
+  // Repo별 일별 조회수 (누적 영역)
+  dash.draw('area-repo', (el) => {
+    if (!R.ready(el, ['traffic'])) return;
+    const picked = R.picked();
+    const src = dash.data('traffic').data.filter((r) => picked.has(r.repo));
+    const dates = [...new Set(src.map((r) => r.date))].sort().slice(-28);
+    if (dates.length < 2) { el.replaceChildren(); el.textContent = '방문 기록이 이틀 이상 쌓이면 표시됩니다'; return; }
+    const inRange = new Set(dates);
+    const totals = d3.rollups(src.filter((r) => inRange.has(r.date)), (v) => d3.sum(v, (r) => +r.views || 0), (r) => r.repo).sort((a, b) => b[1] - a[1]);
+    const top = totals.length > 6 ? totals.slice(0, 5).map((t) => t[0]) : totals.map((t) => t[0]);
+    const keys = totals.length > 6 ? [...top, '기타'] : top;
+    const table = dates.map((date) => {
+      const row = { d: R.parseDay(date) };
+      for (const k of keys) row[k] = 0;
+      for (const r of src) if (r.date === date) row[top.includes(r.repo) ? r.repo : '기타'] += +r.views || 0;
+      return row;
+    });
+    const series = d3.stack().keys(keys)(table);
+    const w = Math.max(240, el.clientWidth), h = 220, m = { t: 12, r: 8, b: 22, l: 4 };
+    const x = d3.scaleUtc(d3.extent(table, (d) => d.d), [m.l, w - m.r]);
+    const y = d3.scaleLinear([0, d3.max(table, (d) => d3.sum(keys, (k) => d[k])) || 1], [h - m.b, m.t]).nice(4);
+    const svg = d3.create('svg').attr('width', '100%').attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', 'repo별 일별 조회수 누적 영역 그래프');
+    for (const t of y.ticks(4).filter(Number.isInteger)) {
+      svg.append('line').attr('class', 'rd-gridline').attr('x1', m.l).attr('x2', w - m.r).attr('y1', y(t)).attr('y2', y(t));
+      if (t > 0) svg.append('text').attr('class', 'rd-axis').attr('x', m.l).attr('y', y(t) - 4).text(R.num(t));
+    }
+    const every = Math.max(1, Math.ceil(table.length / Math.max(2, Math.floor(w / 80)))), fmt = d3.utcFormat('%-m/%-d');
+    table.forEach((d, i) => {
+      if ((table.length - 1 - i) % every) return;
+      svg.append('text').attr('class', 'rd-axis').attr('x', x(d.d)).attr('y', h - 5).attr('text-anchor', i === table.length - 1 ? 'end' : i === 0 ? 'start' : 'middle').text(fmt(d.d));
+    });
+    const area = d3.area().x((p) => x(p.data.d)).y0((p) => y(p[0])).y1((p) => y(p[1]));
+    series.forEach((s, i) => svg.append('path').attr('d', area(s)).style('fill', dash.colors[i % dash.colors.length]).attr('fill-opacity', 0.8));
+    const rule = svg.append('line').attr('class', 'rd-refline').attr('y1', m.t).attr('y2', h - m.b).attr('visibility', 'hidden');
+    const legend = R.el('div', 'rd-legend');
+    keys.forEach((k, i) => {
+      const item = R.el('span'), sw = R.el('span', 'rd-sw');
+      sw.style.background = dash.colors[i % dash.colors.length];
+      item.append(sw, R.el('span', null, k));
+      legend.append(item);
+    });
+    legend.style.marginBottom = '8px';
+    const box = R.el('div');
+    box.style.position = 'relative';
+    box.append(svg.node());
+    el.replaceChildren(legend, box);
+    const tip = R.tip(box), full = d3.utcFormat('%Y-%m-%d');
+    const move = (ev) => {
+      const [px] = d3.pointer(ev, svg.node());
+      const scale = svg.node().getBoundingClientRect().width / w;
+      const d = table[d3.bisectCenter(table.map((t) => +t.d), +x.invert(px / scale))];
+      rule.attr('x1', x(d.d)).attr('x2', x(d.d)).attr('visibility', 'visible');
+      tip.show(x(d.d) * scale, y(d3.sum(keys, (k) => d[k])), [full(d.d), ...keys.filter((k) => d[k]).map((k) => k + ' ' + R.num(d[k]))]);
+    };
+    svg.on('pointermove', move).on('pointerdown', move).on('pointerleave', () => { rule.attr('visibility', 'hidden'); tip.hide(); });
+  });
+
+  // 최근 30일 repo별 커밋
+  R.commits30 = () => {
+    const picked = R.picked();
+    const today = ((window.rdMeta && window.rdMeta.generated_at) || new Date().toISOString()).slice(0, 10);
+    const from = new Date(Date.parse(today) - 30 * 86400000).toISOString().slice(0, 10);
+    return new Map(d3.rollups(dash.data('commits').data.filter((r) => picked.has(r.repo) && r.date > from), (v) => d3.sum(v, (r) => +r.commits || 0), (r) => r.repo));
+  };
+  dash.draw('commit-bars', (el) => {
+    if (!R.ready(el, ['commits'])) return;
+    const rows = [...R.commits30()].map(([repo, n]) => ({ repo, n })).filter((r) => r.n > 0).sort((a, b) => b.n - a.n);
+    if (!rows.length) { el.replaceChildren(); el.textContent = '최근 30일 동안 커밋이 없습니다'; return; }
+    R.bars(el, rows.map((r) => ({ label: r.repo, value: r.n, text: R.num(r.n), source: 'commits', field: 'commits', where: 'repo=' + R.enc(r.repo) })), dash.colors[0]);
+  });
+
+  // 커밋과 방문 비교 (산점도)
+  dash.draw('scatter', (el) => {
+    if (!R.ready(el, ['commits', 'views_by_repo'])) return;
+    const c30 = R.commits30();
+    const views = new Map((dash.data('views_by_repo').data || []).map((r) => [r.repo, r.views14]));
+    const pts = [...R.picked()].map((repo) => ({ repo, c: c30.get(repo) || 0, v: views.get(repo) || 0 }));
+    if (!pts.length) { el.replaceChildren(); el.textContent = '—'; return; }
+    const w = Math.max(240, el.clientWidth), h = 260, m = { t: 22, r: 14, b: 34, l: 14 };
+    const x = d3.scaleLinear([0, d3.max(pts, (p) => p.c) || 1], [m.l, w - m.r]).nice(4);
+    const y = d3.scaleLinear([0, d3.max(pts, (p) => p.v) || 1], [h - m.b, m.t]).nice(4);
+    const svg = d3.create('svg').attr('width', '100%').attr('height', h).attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', 'repo별 최근 30일 커밋 수와 최근 14일 조회수 산점도');
+    for (const t of y.ticks(4).filter(Number.isInteger)) {
+      svg.append('line').attr('class', 'rd-gridline').attr('x1', m.l).attr('x2', w - m.r).attr('y1', y(t)).attr('y2', y(t));
+      if (t > 0) svg.append('text').attr('class', 'rd-axis').attr('x', m.l).attr('y', y(t) - 4).text(R.num(t));
+    }
+    for (const t of x.ticks(4).filter(Number.isInteger)) svg.append('text').attr('class', 'rd-axis').attr('x', x(t)).attr('y', h - m.b + 14).attr('text-anchor', 'middle').text(R.num(t));
+    svg.append('text').attr('class', 'rd-axis').attr('x', m.l).attr('y', 10).text('↑ 조회수 (14일)');
+    svg.append('text').attr('class', 'rd-axis').attr('x', w - m.r).attr('y', h - 3).attr('text-anchor', 'end').text('커밋 수 (30일) →');
+    const g = svg.append('g').selectAll('g').data(pts).join('g');
+    g.append('circle').attr('cx', (p) => x(p.c)).attr('cy', (p) => y(p.v)).attr('r', 6).style('fill', dash.colors[0]).attr('fill-opacity', 0.75).style('stroke', 'var(--color-panel)').attr('stroke-width', 1.5);
+    const placed = [];
+    pts.slice().sort((a, b) => b.v - a.v).forEach((p) => {
+      const right = x(p.c) < w * 0.6, lx = x(p.c) + (right ? 10 : -10), ly = y(p.v) + 4;
+      if (placed.some((q) => Math.abs(q.y - ly) < 13 && Math.abs(q.x - lx) < 120)) return;
+      placed.push({ x: lx, y: ly });
+      svg.append('text').attr('class', 'rd-axis').attr('x', lx).attr('y', ly).attr('text-anchor', right ? 'start' : 'end').style('fill', 'var(--color-fg)').text(p.repo);
+    });
+    el.replaceChildren(svg.node());
+    const tip = R.tip(el);
+    const move = (ev) => {
+      const p = ev.target.__data__;
+      if (!p || p.repo == null) return tip.hide();
+      const scale = svg.node().getBoundingClientRect().width / w;
+      tip.show(x(p.c) * scale, y(p.v), [p.repo, '커밋 ' + R.num(p.c) + '개 (30일)', '조회수 ' + R.num(p.v) + '회 (14일)']);
+    };
+    svg.on('pointermove', move).on('pointerdown', move).on('pointerleave', () => tip.hide());
+  });
+
+  // Repo별 언어 구성
+  dash.draw('lang-repo', (el) => {
+    if (!R.ready(el, ['languages', 'lang_share'])) return;
+    const picked = R.picked();
+    const order = (dash.data('lang_share').data || []).map((r) => r.language);
+    const colorOf = (lang) => dash.colors[Math.min(order.indexOf(lang), dash.colors.length - 1)];
+    const byRepo = d3.rollups(dash.data('languages').data.filter((r) => picked.has(r.repo)), (v) => v, (r) => r.repo)
+      .map(([repo, v]) => ({ repo, total: d3.sum(v, (r) => +r.bytes || 0), parts: v.map((r) => ({ language: r.language, bytes: +r.bytes || 0 })).sort((a, b) => order.indexOf(a.language) - order.indexOf(b.language)) }))
+      .filter((r) => r.total > 0).sort((a, b) => b.total - a.total);
+    if (!byRepo.length) { el.replaceChildren(); el.textContent = '—'; return; }
+    const legend = R.el('div', 'rd-legend');
+    legend.style.marginBottom = '10px';
+    order.slice(0, dash.colors.length).forEach((lang, i) => {
+      const item = R.el('span'), sw = R.el('span', 'rd-sw');
+      sw.style.background = dash.colors[i];
+      item.append(sw, R.el('span', null, i === dash.colors.length - 1 && order.length > dash.colors.length ? lang + ' 외' : lang));
+      legend.append(item);
+    });
+    const rows = R.el('div', 'rd-rows');
+    for (const r of byRepo) {
+      const stack = R.el('div', 'rd-stack');
+      for (const p of r.parts) {
+        const seg = R.el('div');
+        seg.style.flex = p.bytes + ' 0 0';
+        seg.style.background = colorOf(p.language);
+        seg.dataset.tip = r.repo + '|' + p.language + ' ' + ((p.bytes / r.total) * 100).toFixed(1) + '%|' + R.num(Math.round(p.bytes / 1024)) + ' KB';
+        stack.append(seg);
+      }
+      rows.append(R.el('div', 'rd-bar-label', r.repo), stack);
+    }
+    el.replaceChildren(legend, rows);
+    const tip = R.tip(el);
+    const move = (ev) => {
+      const t = ev.target.dataset && ev.target.dataset.tip;
+      if (!t) return tip.hide();
+      const b = ev.target.getBoundingClientRect(), o = el.getBoundingClientRect();
+      tip.show(b.left - o.left + b.width / 2, b.top - o.top, t.split('|'));
+    };
+    el.onpointermove = move;
+    el.onpointerdown = move;
+    el.onpointerleave = () => tip.hide();
+  });
+
   // Actions
   dash.draw('actions-bars', (el) => {
     if (!R.ready(el, ['actions_by_repo'])) return;
@@ -909,11 +1190,11 @@
     tb.replaceChildren(...rows.map((a) => {
       const tr = document.createElement('tr');
       tr.dataset.key = R.enc(a.run_id);
-      const when = R.el('td');
+      const when = R.el('td', 'rd-nowrap');
       const link = R.el('a', null, String(a.started_at).slice(5, 16).replace('T', ' '));
       if (a.url) { link.href = a.url; link.target = '_blank'; link.rel = 'noopener'; }
       when.append(link);
-      tr.append(when, R.el('td', 'rd-name', a.repo), R.el('td', 'rd-dim', a.workflow), R.el('td', 'rd-num', R.num(+a.duration_sec) + '초'));
+      tr.append(when, R.el('td', 'rd-name', a.repo), R.el('td', 'rd-dim', a.workflow), R.el('td', 'rd-num rd-c-dur', R.num(+a.duration_sec) + '초'));
       return tr;
     }));
   });
